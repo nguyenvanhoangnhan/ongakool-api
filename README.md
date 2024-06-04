@@ -32,6 +32,22 @@
 $ npm install
 ```
 
+## Initial database
+
+```bash
+docker run --name mysql --env="MYSQL_ROOT_PASSWORD=rootpwd" -p 3306:3306 mysql
+
+npm run prisma:up
+```
+
+
+## Create a new migration
+
+```bash
+npm run prisma:create-mig "<migration name>"
+```
+
+
 ## Running the app
 
 ```bash
