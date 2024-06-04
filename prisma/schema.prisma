@@ -1,0 +1,297 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model user {
+  id Int @id @default(autoincrement())
+
+  username String
+  email    String
+  pwdHash  String?
+  pwdSalt  String?
+
+  avatarImageId Int?
+
+  createdAt Int?
+  updatedAt Int?
+
+  profile               profile?
+  artist                artist?
+  user_listen_track     user_listen_track[]
+  user_listen_album     user_listen_album[]
+  playlist              playlist[]
+  user_favourite_tracks user_favourite_track[] @relation("user_favourite_track_user_fk")
+  rbac_user_role_links  rbac_user_role_link[]
+}
+
+model profile {
+  id        Int     @id @default(autoincrement())
+  userId    Int     @unique
+  firstName String?
+  lastName  String?
+
+  address String?
+
+  user user @relation(fields: [userId], references: [id])
+}
+
+model track {
+  id Int @id @default(autoincrement())
+
+  spotifyTrackId String? @unique @db.VarChar(22)
+
+  title String
+
+  audioId      Int  @unique
+  mainArtistId Int
+  albumId      Int?
+
+  mainArtist                   artist                        @relation(fields: [mainArtistId], references: [id])
+  album                        album?                        @relation(fields: [albumId], references: [id])
+  audio                        audio                         @relation(fields: [audioId], references: [id])
+  user_listen_tracks           user_listen_track[]
+  playlist_track_links         playlist_track_link[]
+  user_favourite_tracks        user_favourite_track[]        @relation("user_favourite_track_track_fk")
+  secondary_artist_track_links secondary_artist_track_link[]
+
+  @@index([spotifyTrackId], name: "track_spotifyTrackId_index")
+}
+
+model album {
+  id             Int     @id @default(autoincrement())
+  spotifyAlbumId String? @unique @db.VarChar(22)
+
+  artistId     Int?
+  coverImageId Int? @unique
+
+  albumGroup AlbumGroup?
+  albumType  AlbumType?
+
+  releasedAt Int?
+  createdAt  Int?
+  updatedAt  Int?
+
+  coverImage         image?              @relation("album_cover_image", fields: [coverImageId], references: [id])
+  tracks             track[]
+  artist             artist?             @relation(fields: [artistId], references: [id])
+  user_listen_albums user_listen_album[]
+  image              image?              @relation(fields: [imageId], references: [id])
+  imageId            Int?
+
+  @@index([spotifyAlbumId], name: "album_spotifyAlbumId_index")
+}
+
+model artist {
+  id              Int     @id @default(autoincrement())
+  spotifyArtistId String? @unique @db.VarChar(22)
+
+  name         String?
+  introduction String?
+
+  userId        Int  @unique
+  avatarImageId Int? @unique
+  coverImageId  Int? @unique
+
+  createdAt Int?
+  updatedAt Int?
+
+  user                           user                             @relation(fields: [userId], references: [id])
+  coverImage                     image?                           @relation("artist_cover_image", fields: [coverImageId], references: [id])
+  avatarImage                    image?                           @relation("artist_avatar_image", fields: [avatarImageId], references: [id])
+  albums                         album[]
+  artist_introduction_image_link artist_introduction_image_link[]
+  secondary_artist_track_link    secondary_artist_track_link[]
+  tracks                         track[]
+
+  @@index([spotifyArtistId], name: "artist_spotifyArtistId_index")
+}
+
+model playlist {
+  id Int @id @default(autoincrement())
+
+  name        String?
+  description String?
+
+  ownerUserId  Int
+  coverImageId Int
+
+  createdAt Int?
+  updatedAt Int?
+
+  ownerUser            user                  @relation(fields: [ownerUserId], references: [id])
+  coverImage           image                 @relation(fields: [coverImageId], references: [id])
+  playlist_track_links playlist_track_link[]
+}
+
+model secondary_artist_track_link {
+  id Int @id @default(autoincrement())
+
+  artistId Int
+  trackId  Int
+
+  createdAt Int
+
+  artist artist @relation(fields: [artistId], references: [id])
+  track  track  @relation(fields: [trackId], references: [id])
+}
+
+model playlist_track_link {
+  id Int @id @default(autoincrement())
+
+  playlistId Int
+  trackId    Int
+  no         Int
+
+  createdAt Int
+
+  playlist playlist @relation(fields: [playlistId], references: [id])
+  track    track    @relation(fields: [trackId], references: [id])
+}
+
+model artist_introduction_image_link {
+  id Int @id @default(autoincrement())
+
+  artistId Int
+  imageId  Int
+
+  createdAt Int?
+
+  artist artist @relation(fields: [artistId], references: [id])
+  image  image  @relation(fields: [imageId], references: [id])
+}
+
+model image {
+  id          Int     @id @default(autoincrement())
+  label       String?
+  defaultPath String?
+  smallPath   String?
+  tinyPath    String?
+  height      Int?
+  width       Int?
+
+  createdAt Int?
+  updatedAt Int?
+
+  album                          album[]
+  playlist                       playlist[]
+  artist_introduction_image_link artist_introduction_image_link[]
+  artist_avatar_of               artist?                          @relation("artist_avatar_image")
+  artist_cover_of                artist?                          @relation("artist_cover_image")
+  album_cover_of                 album?                           @relation("album_cover_image")
+}
+
+model audio {
+  id Int @id @default(autoincrement())
+
+  label       String?
+  path        String?
+  s3ObjectKey String?
+  size        Int? /// In bytes
+  length      Int? /// In seconds
+
+  createdAt Int?
+  updatedAt Int?
+  track     track?
+}
+
+model user_listen_track {
+  id Int @id @default(autoincrement())
+
+  userId      Int
+  trackId     Int
+  listenCount Int @default(0)
+
+  createdAt Int?
+  updatedAt Int?
+
+  user  user  @relation(fields: [userId], references: [id])
+  track track @relation(fields: [trackId], references: [id])
+}
+
+model user_favourite_track {
+  id Int @id @default(autoincrement())
+
+  userId  Int
+  trackId Int
+
+  createdAt Int?
+  updatedAt Int?
+
+  user  user  @relation("user_favourite_track_user_fk", fields: [userId], references: [id])
+  track track @relation("user_favourite_track_track_fk", fields: [trackId], references: [id])
+}
+
+model user_listen_album {
+  id Int @id @default(autoincrement())
+
+  userId  Int
+  albumId Int
+
+  createdAt Int?
+  updatedAt Int?
+
+  user  user  @relation(fields: [userId], references: [id])
+  album album @relation(fields: [albumId], references: [id])
+}
+
+// RBAC:
+model rbac_permission {
+  uniqueName                String                      @id
+  displayName               String?
+  description               String?
+  rbac_role_permission_link rbac_role_permission_link[]
+}
+
+model rbac_role {
+  uniqueName                String                      @id
+  displayName               String?
+  description               String?
+  rbac_role_permission_link rbac_role_permission_link[]
+  rbac_user_role_link       rbac_user_role_link[]
+}
+
+model rbac_role_permission_link {
+  id Int @id @default(autoincrement())
+
+  roleId       String
+  permissionId String
+
+  role       rbac_role       @relation(fields: [roleId], references: [uniqueName])
+  permission rbac_permission @relation(fields: [permissionId], references: [uniqueName])
+}
+
+model rbac_user_role_link {
+  id Int @id @default(autoincrement())
+
+  userId Int
+  roleId String
+
+  user user      @relation(fields: [userId], references: [id])
+  role rbac_role @relation(fields: [roleId], references: [uniqueName])
+}
+
+// Same as spotify API SimplifiedAlbumObject.album_group
+enum AlbumGroup {
+  single
+  album
+  appears_on
+  compilation
+}
+
+// Same as spotify API SimplifiedAlbumObject.album_type
+enum AlbumType {
+  album
+  single
+  compilation
+}
