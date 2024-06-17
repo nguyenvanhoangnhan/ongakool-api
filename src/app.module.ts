@@ -11,6 +11,7 @@ import { ImageModule } from './accessory-modules/image/image.module';
 import { PlaylistModule } from './playlist/playlist.module';
 import { UserModule } from './user/user.module';
 import AppConfig from './config/configuration';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import AppConfig from './config/configuration';
       isGlobal: true,
       load: [AppConfig],
     }),
+    AuthModule,
     TrackModule,
     AlbumModule,
     AudioModule,
