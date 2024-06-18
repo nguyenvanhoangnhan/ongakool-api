@@ -72,6 +72,25 @@ export class ArtistService {
     return PlainToInstance(ArtistWithForeign, artist);
   }
 
+  async findOne_WithAllForeign(id: number) {
+    const artist = await this.prisma.artist.findFirstOrThrow({
+      where: { id },
+      include: {
+        albums: {
+          include: { tracks: true },
+          orderBy: {
+            releasedAt: 'desc',
+          },
+        },
+        tracks: {
+          orderBy: { listenCount: 'desc' },
+        },
+      },
+    });
+
+    return PlainToInstance(ArtistWithForeign, artist);
+  }
+
   async getRecentListenArtist(authData: AuthData) {
     const recentArtists = await this.prisma.user_listen_artist.findMany({
       where: {

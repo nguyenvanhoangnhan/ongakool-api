@@ -16,8 +16,10 @@ import { Artist } from 'src/artist/entities/artist.entity';
 export class Track {
   @ApiPropString() id: number;
   @ApiPropString() title: string;
+  @ApiPropString() artistNames: string;
   @ApiPropString() spotifyTrackId: string;
   @ApiPropNumber() mainArtistId: number;
+  @ApiPropNumber() listenCount: number;
   @ApiPropNumber() albumId: number;
   @ApiPropNumber() audioId: number;
 }

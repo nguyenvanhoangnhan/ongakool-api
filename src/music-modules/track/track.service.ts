@@ -1,3 +1,4 @@
+import { ToggleLikeTrackDto } from './dto/toggleLikeTrack.dto';
 import { Injectable } from '@nestjs/common';
 // import { CreateTrackDto } from './dto/create-track.dto';
 // import { UpdateTrackDto } from './dto/update-track.dto';
@@ -7,6 +8,7 @@ import { PlainToInstance, PlainToInstanceList } from 'src/helpers';
 import { FindManyTrackQueryDto } from './dto/findManyTrack.dto';
 import { isNil } from 'lodash';
 import { Track, TrackWithForeign } from './entities/track.entity';
+import moment from 'moment';
 
 @Injectable()
 export class TrackService {
@@ -117,5 +119,60 @@ export class TrackService {
       Track,
       recentTracks.map((i) => i.track),
     );
+  }
+
+  async toggleLikeTrack(dto: ToggleLikeTrackDto, authData: AuthData) {
+    const { toggleOn, trackId } = dto;
+    await this.prisma.track.findFirstOrThrow({
+      where: { id: +dto.trackId },
+    });
+
+    const like = await this.prisma.user_favourite_track.findFirst({
+      where: {
+        trackId,
+        userId: authData.id,
+      },
+    });
+
+    if (toggleOn === 1 && !like) {
+      await this.prisma.user_favourite_track.create({
+        data: {
+          trackId,
+          userId: authData.id,
+        },
+      });
+    } else if (!(toggleOn === 0) && like) {
+      await this.prisma.user_favourite_track.delete({
+        where: {
+          id: like.id,
+        },
+      });
+    }
+
+    return true;
+  }
+
+  async listenTrack(trackId: number, authData: AuthData) {
+    return this.prisma.user_listen_track.upsert({
+      where: {
+        user_listen_track_userId_trackId_unique: {
+          userId: authData.id,
+          trackId,
+        },
+      },
+      update: {
+        updatedAt: moment().unix(),
+        listenCount: {
+          increment: 1,
+        },
+      },
+      create: {
+        userId: authData.id,
+        trackId,
+        listenCount: 1,
+        updatedAt: moment().unix(),
+        createdAt: moment().unix(),
+      },
+    });
   }
 }

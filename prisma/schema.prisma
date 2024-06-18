@@ -52,19 +52,22 @@ model track {
 
   spotifyTrackId String? @unique @db.VarChar(22)
 
-  title String
+  title       String
+  artistNames String // Comma separated artist names, for convenience
 
   audioId      Int  @unique
   mainArtistId Int
   albumId      Int?
+  listenCount  Int  @default(0)
 
-  mainArtist                   artist                        @relation(fields: [mainArtistId], references: [id])
-  album                        album?                        @relation(fields: [albumId], references: [id])
-  audio                        audio                         @relation(fields: [audioId], references: [id])
-  user_listen_tracks           user_listen_track[]
-  playlist_track_links         playlist_track_link[]
-  user_favourite_tracks        user_favourite_track[]        @relation("user_favourite_track_track_fk")
-  secondary_artist_track_links secondary_artist_track_link[]
+  mainArtist                      artist                            @relation(fields: [mainArtistId], references: [id])
+  album                           album?                            @relation(fields: [albumId], references: [id])
+  audio                           audio                             @relation(fields: [audioId], references: [id])
+  user_listen_tracks              user_listen_track[]
+  playlist_track_links            playlist_track_link[]
+  user_favourite_tracks           user_favourite_track[]            @relation("user_favourite_track_track_fk")
+  secondary_artist_track_links    secondary_artist_track_link[]
+  track_spotifySecondTrackId_link track_spotifySecondTrackId_link[]
 
   @@index([spotifyTrackId], name: "track_spotifyTrackId_index")
 }
@@ -121,7 +124,7 @@ model playlist {
   description String?
 
   ownerUserId   Int
-  coverImageUrl Int
+  coverImageUrl String
 
   createdAt Int?
   updatedAt Int?
@@ -181,6 +184,8 @@ model user_listen_track {
 
   user  user  @relation(fields: [userId], references: [id])
   track track @relation(fields: [trackId], references: [id])
+
+  @@unique([userId, trackId], name: "user_listen_track_userId_trackId_unique")
 }
 
 model user_listen_artist {
@@ -221,6 +226,15 @@ model user_listen_album {
 
   user  user  @relation(fields: [userId], references: [id])
   album album @relation(fields: [albumId], references: [id])
+}
+
+model track_spotifySecondTrackId_link {
+  id Int @id @default(autoincrement())
+
+  trackId              Int
+  spotifySecondTrackId String @db.VarChar(22)
+
+  track track @relation(fields: [trackId], references: [id])
 }
 
 // RBAC:

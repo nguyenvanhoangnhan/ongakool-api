@@ -59,6 +59,20 @@ export class ArtistController {
     return this.artistService.findMany(query);
   }
 
+  @Get('with-tracks')
+  @UseGuards(UserGuard)
+  findOneWithSong(@Param('id') id: string) {
+    if (isNaN(+id)) throw new Error('Invalid artist id');
+    return this.artistService.findOne_WithTracks(+id);
+  }
+
+  @Get('with-albums')
+  @UseGuards(UserGuard)
+  findOneWithAlbums(@Param('id') id: string) {
+    if (isNaN(+id)) throw new Error('Invalid artist id');
+    return this.artistService.findOne_WithAlbums(+id);
+  }
+
   @Get('recent-listen')
   @UseGuards(UserGuard)
   getRecentListenArtist(@GetAuthData() authData: AuthData) {

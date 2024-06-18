@@ -8,6 +8,8 @@ import {
   Delete,
   Query,
   UseGuards,
+  Post,
+  Body,
 } from '@nestjs/common';
 import { TrackService } from './track.service';
 // import { CreateTrackDto } from './dto/create-track.dto';
@@ -18,6 +20,7 @@ import {
   AuthData,
   GetAuthData,
 } from 'src/auth/decorator/get-auth-data.decorator';
+import { ToggleLikeTrackDto } from './dto/toggleLikeTrack.dto';
 
 @Controller('track')
 export class TrackController {
@@ -58,5 +61,25 @@ export class TrackController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.trackService.remove(+id);
+  }
+
+  @Post(':id/listen')
+  @ApiBearerAuth()
+  @UseGuards(UseGuards)
+  async listenToTrack(
+    @Param('id') id: string,
+    @GetAuthData() authData: AuthData,
+  ) {
+    return await this.trackService.listenTrack(+id, authData);
+  }
+
+  @Post(':id/toggle-like')
+  @ApiBearerAuth()
+  @UseGuards(UseGuards)
+  async toggleLikeTrack(
+    @Body() body: ToggleLikeTrackDto,
+    @GetAuthData() authData: AuthData,
+  ) {
+    return await this.trackService.toggleLikeTrack(body, authData);
   }
 }
