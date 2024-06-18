@@ -19,7 +19,7 @@ export class User {
   @ApiPropString() email: string;
   @ApiPropString() pwdHash: string;
   @ApiPropString() pwdSalt: string;
-  @ApiPropNumber() avatarImageId: number;
+  @ApiPropString() avatarImageUrl: string;
   @ApiPropNumber() createdAt: number;
   @ApiPropNumber() updatedAt: number;
 }

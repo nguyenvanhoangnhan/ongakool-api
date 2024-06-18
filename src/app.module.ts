@@ -7,7 +7,6 @@ import { TrackModule } from './music-modules/track/track.module';
 import { AlbumModule } from './music-modules/album/album.module';
 import { AudioModule } from './music-modules/audio/audio.module';
 import { ArtistModule } from './artist/artist.module';
-import { ImageModule } from './accessory-modules/image/image.module';
 import { PlaylistModule } from './playlist/playlist.module';
 import { UserModule } from './user/user.module';
 import AppConfig from './config/configuration';
@@ -26,7 +25,6 @@ import { AuthModule } from './auth/auth.module';
     AlbumModule,
     AudioModule,
     ArtistModule,
-    ImageModule,
     PlaylistModule,
     UserModule,
   ],

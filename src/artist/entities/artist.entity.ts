@@ -1,16 +1,27 @@
+import {
+  ApiPropNumber,
+  ApiPropString,
+  ApiPropStringOptional,
+  ApiPropTypeOptional,
+} from 'src/decorator/entity.decorator';
+import { Album } from 'src/music-modules/album/entities/album.entity';
+import { Track } from 'src/music-modules/track/entities/track.entity';
+import { User } from 'src/user/entities/user.entity';
+
 export class Artist {
-  // id              Int     @id @default(autoincrement())
-  // spotifyArtistId String? @unique @db.VarChar(22)
-  // name         String?
-  // introduction String?
-  // userId       Int  @unique
-  // coverImageId Int?
-  // createdAt Int?
-  // updatedAt Int?
-  // user                           user                             @relation(fields: [userId], references: [id])
-  // coverImage                     image?                           @relation(fields: [coverImageId], references: [id])
-  // album                          album[]
-  // artist_introduction_image_link artist_introduction_image_link[]
-  // secondary_artist_track_link    secondary_artist_track_link[]
-  // track                          track[]
+  @ApiPropNumber() id: number;
+  @ApiPropString() spotifyArtistId: string;
+  @ApiPropString() name: string;
+  @ApiPropString() introduction: string;
+  @ApiPropNumber() userId: number;
+
+  @ApiPropStringOptional() coverImageUrl: string;
+  @ApiPropNumber() createdAt: number;
+  @ApiPropNumber() updatedAt: number;
+}
+
+export class ArtistWithForeign extends Artist {
+  @ApiPropTypeOptional([Album]) albums: Album[];
+  @ApiPropTypeOptional([Track]) tracks: Track[];
+  @ApiPropTypeOptional(User) User: User;
 }

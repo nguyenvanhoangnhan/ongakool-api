@@ -1,9 +1,9 @@
 import { AlbumGroup, AlbumType } from '@prisma/client';
-import { Image } from 'src/accessory-modules/image/entities/image.entity';
 import { Artist } from 'src/artist/entities/artist.entity';
 import {
   ApiPropEnumOptional,
   ApiPropNumber,
+  ApiPropStringOptional,
   ApiPropTypeOptional,
 } from 'src/decorator/entity.decorator';
 import { Track } from 'src/music-modules/track/entities/track.entity';
@@ -12,9 +12,10 @@ import { Pivot_UserListenAlbum } from 'src/pivot/pivots.entity';
 export class Album {
   @ApiPropNumber() id: number;
   @ApiPropNumber() spotifyAlbumId: number;
+  @ApiPropStringOptional() title: string;
 
   @ApiPropNumber() artistId: number;
-  @ApiPropNumber() coverImageId: number;
+  @ApiPropStringOptional() coverImageUrl: string;
 
   @ApiPropEnumOptional(AlbumGroup) albumGroup?: AlbumGroup;
   @ApiPropEnumOptional(AlbumGroup) albumType?: AlbumType;
@@ -25,7 +26,6 @@ export class Album {
 }
 
 export class AlbumWithForeign {
-  @ApiPropTypeOptional(Image) coverImage?: Image;
   @ApiPropTypeOptional(Track) tracks?: Track[];
   @ApiPropTypeOptional(Artist) artist?: Artist;
 

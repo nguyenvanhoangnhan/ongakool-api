@@ -21,7 +21,7 @@ model user {
   pwdHash  String?
   pwdSalt  String?
 
-  avatarImageId Int?
+  avatarImageUrl String?
 
   createdAt Int?
   updatedAt Int?
@@ -33,6 +33,7 @@ model user {
   playlist              playlist[]
   user_favourite_tracks user_favourite_track[] @relation("user_favourite_track_user_fk")
   rbac_user_role_links  rbac_user_role_link[]
+  user_listen_artist    user_listen_artist[]
 }
 
 model profile {
@@ -70,10 +71,11 @@ model track {
 
 model album {
   id             Int     @id @default(autoincrement())
+  title          String
   spotifyAlbumId String? @unique @db.VarChar(22)
 
-  artistId     Int?
-  coverImageId Int? @unique
+  artistId      Int?
+  coverImageUrl String?
 
   albumGroup AlbumGroup?
   albumType  AlbumType?
@@ -82,12 +84,9 @@ model album {
   createdAt  Int?
   updatedAt  Int?
 
-  coverImage         image?              @relation("album_cover_image", fields: [coverImageId], references: [id])
   tracks             track[]
   artist             artist?             @relation(fields: [artistId], references: [id])
   user_listen_albums user_listen_album[]
-  image              image?              @relation(fields: [imageId], references: [id])
-  imageId            Int?
 
   @@index([spotifyAlbumId], name: "album_spotifyAlbumId_index")
 }
@@ -99,20 +98,18 @@ model artist {
   name         String?
   introduction String?
 
-  userId        Int  @unique
-  avatarImageId Int? @unique
-  coverImageId  Int? @unique
+  userId         Int     @unique
+  avatarImageUrl String? @unique
+  coverImageUrl  String? @unique
 
   createdAt Int?
   updatedAt Int?
 
-  user                           user                             @relation(fields: [userId], references: [id])
-  coverImage                     image?                           @relation("artist_cover_image", fields: [coverImageId], references: [id])
-  avatarImage                    image?                           @relation("artist_avatar_image", fields: [avatarImageId], references: [id])
-  albums                         album[]
-  artist_introduction_image_link artist_introduction_image_link[]
-  secondary_artist_track_link    secondary_artist_track_link[]
-  tracks                         track[]
+  user                        user                          @relation(fields: [userId], references: [id])
+  albums                      album[]
+  secondary_artist_track_link secondary_artist_track_link[]
+  tracks                      track[]
+  user_listen_artist          user_listen_artist[]
 
   @@index([spotifyArtistId], name: "artist_spotifyArtistId_index")
 }
@@ -123,14 +120,13 @@ model playlist {
   name        String?
   description String?
 
-  ownerUserId  Int
-  coverImageId Int
+  ownerUserId   Int
+  coverImageUrl Int
 
   createdAt Int?
   updatedAt Int?
 
   ownerUser            user                  @relation(fields: [ownerUserId], references: [id])
-  coverImage           image                 @relation(fields: [coverImageId], references: [id])
   playlist_track_links playlist_track_link[]
 }
 
@@ -159,38 +155,6 @@ model playlist_track_link {
   track    track    @relation(fields: [trackId], references: [id])
 }
 
-model artist_introduction_image_link {
-  id Int @id @default(autoincrement())
-
-  artistId Int
-  imageId  Int
-
-  createdAt Int?
-
-  artist artist @relation(fields: [artistId], references: [id])
-  image  image  @relation(fields: [imageId], references: [id])
-}
-
-model image {
-  id          Int     @id @default(autoincrement())
-  label       String?
-  defaultPath String?
-  smallPath   String?
-  tinyPath    String?
-  height      Int?
-  width       Int?
-
-  createdAt Int?
-  updatedAt Int?
-
-  album                          album[]
-  playlist                       playlist[]
-  artist_introduction_image_link artist_introduction_image_link[]
-  artist_avatar_of               artist?                          @relation("artist_avatar_image")
-  artist_cover_of                artist?                          @relation("artist_cover_image")
-  album_cover_of                 album?                           @relation("album_cover_image")
-}
-
 model audio {
   id Int @id @default(autoincrement())
 
@@ -217,6 +181,20 @@ model user_listen_track {
 
   user  user  @relation(fields: [userId], references: [id])
   track track @relation(fields: [trackId], references: [id])
+}
+
+model user_listen_artist {
+  id Int @id @default(autoincrement())
+
+  userId      Int
+  artistId    Int
+  listenCount Int @default(0)
+
+  createdAt Int?
+  updatedAt Int?
+
+  user   user   @relation(fields: [userId], references: [id])
+  artist artist @relation(fields: [artistId], references: [id])
 }
 
 model user_favourite_track {

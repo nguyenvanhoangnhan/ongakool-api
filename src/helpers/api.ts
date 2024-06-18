@@ -3,13 +3,4 @@ export const APISummaries = {
   USER: 'User permission required',
 };
 
-export const sensitiveFields = [
-  // 'bannedAt',
-  // 'verifiedAt',
-  // 'isVerified',
-  // 'createdAt',
-  // 'role',
-  // 'password',
-  // 'email',
-  // 'id',
-];
+export const sensitiveFields = ['pwdHash', 'pwdSalt'];

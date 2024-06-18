@@ -1,4 +1,3 @@
-import { Image } from 'src/accessory-modules/image/entities/image.entity';
 import {
   ApiPropNumber,
   ApiPropStringOptional,
@@ -15,7 +14,7 @@ export class Playlist {
   @ApiPropStringOptional() description?: string;
 
   @ApiPropNumber() ownerUserId: number;
-  @ApiPropNumber() coverImageId: number;
+  @ApiPropStringOptional() coverImageUrl: string;
 
   @ApiPropUnixOptional() createdAt?: number;
   @ApiPropUnixOptional() updatedAt?: number;
@@ -23,7 +22,6 @@ export class Playlist {
 
 export class PlaylistWithForeign extends Playlist {
   @ApiPropTypeOptional(User) ownerUser?: User;
-  @ApiPropTypeOptional(Image) coverImage?: Image;
 
   @ApiPropTypeOptional([Pivot_PlaylistTrackLink])
   playlist_track_links?: Pivot_PlaylistTrackLink[];
