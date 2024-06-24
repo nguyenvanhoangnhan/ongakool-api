@@ -9,11 +9,17 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { AuthData } from 'src/auth/decorator/get-auth-data.decorator';
 import { AddTrackToPlaylistDto } from './dto/addTrackToPlaylist.dto';
 import { Track } from 'src/music-modules/track/entities/track.entity';
+import { GetUnixNow } from 'src/util/common.util';
+import axios from 'axios';
+import { ConfigService } from '@nestjs/config';
 
 // import { UpdatePlaylistDto } from './dto/update-playlist.dto';
 @Injectable()
 export class PlaylistService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private config: ConfigService,
+  ) {}
 
   async create(authData: AuthData) {
     const createdCount = await this.prisma.playlist.count({
@@ -40,27 +46,25 @@ export class PlaylistService {
   }
 
   async findOne(id: number) {
-    return PlainToInstance(
-      Playlist,
-      await this.prisma.playlist.findFirstOrThrow({
-        where: { id },
-      }),
-    );
+    const playlist = await this.prisma.playlist.findFirstOrThrow({
+      where: { id },
+    });
+
+    return PlainToInstance(Playlist, playlist);
   }
 
   async findOneWithForeign(id: number) {
-    return PlainToInstance(
-      PlaylistWithForeign,
-      await this.prisma.playlist.findFirstOrThrow({
-        where: { id },
-        include: {
-          ownerUser: true,
-          playlist_track_links: {
-            include: { track: true },
-          },
+    const playlist = await this.prisma.playlist.findFirstOrThrow({
+      where: { id },
+      include: {
+        ownerUser: true,
+        playlist_track_links: {
+          include: { track: true },
         },
-      }),
-    );
+      },
+    });
+
+    return PlainToInstance(PlaylistWithForeign, playlist);
   }
 
   async getMyPlaylists(authData: AuthData) {
@@ -76,23 +80,44 @@ export class PlaylistService {
   async addTrackToPlaylist(dto: AddTrackToPlaylistDto, authData: AuthData) {
     const { playlistId, trackId } = dto;
     await this.prisma.track.findFirstOrThrow({
-      where: { id: trackId },
+      where: { id: +trackId },
     });
 
     const playlist = await this.prisma.playlist.findFirstOrThrow({
-      where: { id: playlistId },
+      where: { id: +playlistId },
+      include: {
+        playlist_track_links: {
+          select: {
+            trackId: true,
+          },
+        },
+        _count: {
+          select: {
+            playlist_track_links: true,
+          },
+        },
+      },
     });
 
     if (playlist.ownerUserId !== authData.id) {
       throw new UnauthorizedException('You are not the owner of this playlist');
     }
 
+    if (
+      playlist.playlist_track_links.findIndex((i) => i.trackId === trackId) !==
+      -1
+    ) {
+      throw new BadRequestException('This track is already in this playlist');
+    }
+
     await this.prisma.playlist.update({
-      where: { id: playlistId },
+      where: { id: +playlistId },
       data: {
         playlist_track_links: {
-          connect: {
-            id: trackId,
+          create: {
+            trackId: +trackId,
+            createdAt: GetUnixNow(),
+            no: playlist._count.playlist_track_links + 1,
           },
         },
       },
@@ -144,7 +169,9 @@ export class PlaylistService {
   }
 
   // Return a list of recommendation track ids
-  async getRecommendationTracks(playlistId: number): Promise<Track[]> {
+  async external_getRecommendationTracksForPlaylist(
+    playlistId: number,
+  ): Promise<Track[]> {
     const trackInPlaylist = await this.prisma.playlist_track_link.findMany({
       where: {
         playlistId: playlistId,
@@ -153,6 +180,10 @@ export class PlaylistService {
         track: {
           select: {
             spotifyTrackId: true,
+            track_spotifySecondTrackId_link: true,
+            // FOR LOGGING
+            title: true,
+            artistNames: true,
           },
         },
       },
@@ -162,11 +193,48 @@ export class PlaylistService {
       throw new BadRequestException('Playlist is empty');
     }
 
-    const spotifyTrackIdsInPlaylist = trackInPlaylist.map(
-      (i) => i.track.spotifyTrackId,
+    console.log('========SONG IN PLAYLIST============');
+    console.table(
+      trackInPlaylist.map((item) => ({
+        name: item.track.title,
+        artistNames: item.track.artistNames,
+      })),
     );
 
-    const recommendationSpotifyTrackIds: string[] = []; // call recommendation service here
+    const spotifyTrackIdsInPlaylist = trackInPlaylist.reduce<string[]>(
+      (acc, cur) => {
+        acc.push(cur.track.spotifyTrackId);
+        if (cur.track?.track_spotifySecondTrackId_link?.length > 0) {
+          acc.push(
+            cur.track.track_spotifySecondTrackId_link?.[0].spotifySecondTrackId,
+          );
+        }
+        return acc;
+      },
+      [],
+    );
+
+    // console.log('send these ids to recommendation api: ')
+    // console.table(spotifyTrackIdsInPlaylist);
+
+    const apiUrl =
+      this.config.get('externalApi.recommendation.baseUrl') +
+      'recommend-tracks-for-playlist';
+    const recommendationResult = await axios
+      .post<{
+        result: string;
+      }>(apiUrl, {
+        trackIds: spotifyTrackIdsInPlaylist,
+      })
+      .then((res) => res.data.result);
+
+    // console.log('result: ', recommendationResult);
+
+    if (!recommendationResult?.length) {
+      throw new BadRequestException('No recommendation tracks found');
+    }
+
+    const recommendationSpotifyTrackIds = recommendationResult.split(',');
 
     const recommendationTracks = await this.prisma.track.findMany({
       where: {
@@ -182,14 +250,25 @@ export class PlaylistService {
             track_spotifySecondTrackId_link: {
               some: {
                 spotifySecondTrackId: {
-                  in: spotifyTrackIdsInPlaylist,
+                  in: recommendationSpotifyTrackIds,
                 },
               },
             },
           },
         ],
       },
+      include: {
+        track_spotifySecondTrackId_link: true,
+      },
     });
+    console.log('Recommendation Tracks:');
+    console.table(
+      recommendationTracks.map((item) => ({
+        id: item.id,
+        name: item.title,
+        artistNames: item.artistNames,
+      })),
+    );
 
     return PlainToInstanceList(Track, recommendationTracks);
   }

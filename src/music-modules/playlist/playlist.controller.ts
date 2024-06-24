@@ -6,7 +6,6 @@ import {
   // Patch,
   Param,
   Delete,
-  UseGuards,
 } from '@nestjs/common';
 import { PlaylistService } from './playlist.service';
 import {
@@ -14,15 +13,18 @@ import {
   GetAuthData,
 } from 'src/auth/decorator/get-auth-data.decorator';
 import { AddTrackToPlaylistDto } from './dto/addTrackToPlaylist.dto';
-import { UserGuard } from 'src/auth/guard/auth.guard';
+import { ApiTags } from '@nestjs/swagger';
+import { GuardUser } from 'src/decorator/auth.dectorator';
+import { SuccessMessageResp } from 'src/util/common.util';
 // import { UpdatePlaylistDto } from './dto/update-playlist.dto';
 
 @Controller('playlist')
+@ApiTags('Playlist')
 export class PlaylistController {
   constructor(private readonly playlistService: PlaylistService) {}
 
   @Post()
-  @UseGuards(UserGuard)
+  @GuardUser()
   create(
     @GetAuthData()
     authData: AuthData,
@@ -37,22 +39,24 @@ export class PlaylistController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.playlistService.findOne(+id);
+    return this.playlistService.findOneWithForeign(+id);
   }
 
-  @Get('my-playlists')
-  @UseGuards(UserGuard)
+  @Get('mine')
+  @GuardUser()
   getMyPlaylists(@GetAuthData() authData: AuthData) {
     return this.playlistService.getMyPlaylists(authData);
   }
 
   @Post('/add-track')
-  @UseGuards(UserGuard)
-  addTrackToPlaylist(
+  @GuardUser()
+  async addTrackToPlaylist(
     @Body() body: AddTrackToPlaylistDto,
     @GetAuthData() authData: AuthData,
   ) {
-    return this.playlistService.addTrackToPlaylist(body, authData);
+    await this.playlistService.addTrackToPlaylist(body, authData);
+
+    return SuccessMessageResp();
   }
 
   // @Patch(':id')
@@ -64,12 +68,16 @@ export class PlaylistController {
   // }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.playlistService.remove(+id);
+  async remove(@Param('id') id: string) {
+    await this.playlistService.remove(+id);
+
+    return SuccessMessageResp();
   }
 
   @Get(':id/recommend-tracks')
-  recommendTracks(@Param('id') id: string) {
-    return this.playlistService.getRecommendationTracks(+id);
+  async getRecommendationTracksForPlaylist(@Param('id') id: string) {
+    return this.playlistService.external_getRecommendationTracksForPlaylist(
+      +id,
+    );
   }
 }

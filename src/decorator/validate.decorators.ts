@@ -36,12 +36,20 @@ export function ValidateApiPropRequired01() {
   );
 }
 
-export function ValidateApiPropOptionalNumber() {
+export function ValidateApiPropOptionalNumber(optionalParams?: {
+  default?: number;
+}) {
   return applyDecorators(
     Type(() => Number),
     IsOptional(),
     IsNumber(),
-    ApiProperty({ type: Number, required: false, nullable: false }),
+    ApiProperty({
+      type: Number,
+      required: false,
+      nullable: false,
+      example: optionalParams?.default,
+      default: optionalParams?.default,
+    }),
   );
 }
 

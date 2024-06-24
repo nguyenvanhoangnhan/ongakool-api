@@ -9,10 +9,17 @@ import { FindManyTrackQueryDto } from './dto/findManyTrack.dto';
 import { isNil } from 'lodash';
 import { Track, TrackWithForeign } from './entities/track.entity';
 import moment from 'moment';
+import { ConfigService } from '@nestjs/config';
+import axios from 'axios';
+import { SearchTrackByLyricsQueryDto } from './dto/searchTrackByLyrics-query.dto';
+import { writeFileSync } from 'fs';
 
 @Injectable()
 export class TrackService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private config: ConfigService,
+  ) {}
 
   // create(createTrackDto: CreateTrackDto) {
   //   console.log(createTrackDto);
@@ -174,5 +181,85 @@ export class TrackService {
         createdAt: moment().unix(),
       },
     });
+  }
+
+  async external_searchTrackByLyrics(query: SearchTrackByLyricsQueryDto) {
+    const apiUrl =
+      this.config.get('externalApi.searchByLyrics.baseUrl') +
+      'search-track-by-lyrics';
+
+    const queryParamsStr = new URLSearchParams({
+      query: query.text,
+      limit: query.limit.toString(),
+    }).toString();
+
+    const result = await axios
+      .get<{
+        result: string[];
+      }>(`${apiUrl}?${queryParamsStr}`)
+      .then((res) => res.data.result);
+
+    // each string in result will be look like this:
+    // '4CeeEOM32jQcH3eN9Q2dGj->Nirvana - Smells Like Teen Spirit'
+    const resultSpotifyTrackIds = result.map((i) => i.split('->')[0]);
+
+    const tracks = await this.prisma.track.findMany({
+      where: {
+        spotifyTrackId: {
+          in: resultSpotifyTrackIds,
+        },
+      },
+      include: {
+        mainArtist: true,
+      },
+      // orderBy: {
+      //   temp_popularity: 'desc',
+      // },
+    });
+
+    // sort result by resultPopularityTrackIds
+    const resultSortedByExternalResult = resultSpotifyTrackIds.map((id) =>
+      tracks.find((i) => i.spotifyTrackId === id),
+    );
+
+    console.log(`:::QUERY::: limit ${query.limit}  text: "${query.text}"`);
+    console.table(
+      tracks.map((item) => ({
+        id: item.id,
+        title: item.title,
+        artistNames: item.mainArtist.name,
+        popularity: item.temp_popularity,
+      })),
+    );
+
+    return PlainToInstanceList(Track, resultSortedByExternalResult);
+  }
+
+  async chore_countLeastPopularTracks(lessThanOrEqual: number = 10) {
+    const count = await this.prisma.track.count({
+      where: {
+        temp_popularity: {
+          lte: lessThanOrEqual,
+        },
+      },
+    });
+
+    // find and write to exported_data/least_popular_tracks_${lessThanOrEqual}.json
+    const tracks = (
+      await this.prisma.track.findMany({
+        where: {
+          temp_popularity: {
+            lte: lessThanOrEqual,
+          },
+        },
+      })
+    ).map((i) => i.spotifyTrackId);
+
+    writeFileSync(
+      `exported_data/least_popular_tracks_${lessThanOrEqual}.json`,
+      JSON.stringify(tracks, null, 2),
+    );
+
+    return count;
   }
 }

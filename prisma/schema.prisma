@@ -21,13 +21,15 @@ model user {
   pwdHash  String?
   pwdSalt  String?
 
+  fullname String?
+
   avatarImageUrl String?
 
   createdAt Int?
   updatedAt Int?
 
   profile               profile?
-  artist                artist?
+  artist                artist[]
   user_listen_track     user_listen_track[]
   user_listen_album     user_listen_album[]
   playlist              playlist[]
@@ -52,17 +54,23 @@ model track {
 
   spotifyTrackId String? @unique @db.VarChar(22)
 
-  title       String
-  artistNames String // Comma separated artist names, for convenience
+  title       String @db.VarChar(512)
+  artistNames String @db.VarChar(640) // Comma separated artist names, for convenience
+  durationMs  Int
+  trackNumber Int? // Track number in the album
+  discNumber  Int? // Disc number in the album
 
-  audioId      Int  @unique
-  mainArtistId Int
-  albumId      Int?
-  listenCount  Int  @default(0)
+  audioId         Int?
+  mainArtistId    Int
+  albumId         Int?
+  listenCount     Int     @default(0)
+  previewAudioUrl String?
+
+  temp_popularity Int? @default(0)
 
   mainArtist                      artist                            @relation(fields: [mainArtistId], references: [id])
   album                           album?                            @relation(fields: [albumId], references: [id])
-  audio                           audio                             @relation(fields: [audioId], references: [id])
+  audio                           audio?                            @relation(fields: [audioId], references: [id])
   user_listen_tracks              user_listen_track[]
   playlist_track_links            playlist_track_link[]
   user_favourite_tracks           user_favourite_track[]            @relation("user_favourite_track_track_fk")
@@ -74,7 +82,7 @@ model track {
 
 model album {
   id             Int     @id @default(autoincrement())
-  title          String
+  title          String  @db.VarChar(512)
   spotifyAlbumId String? @unique @db.VarChar(22)
 
   artistId      Int?
@@ -83,7 +91,7 @@ model album {
   albumGroup AlbumGroup?
   albumType  AlbumType?
 
-  releasedAt Int?
+  releasedAt Int? /// YYYYMMDD
   createdAt  Int?
   updatedAt  Int?
 
@@ -101,14 +109,14 @@ model artist {
   name         String?
   introduction String?
 
-  userId         Int     @unique
-  avatarImageUrl String? @unique
+  userId         Int?
+  avatarImageUrl String?
   coverImageUrl  String? @unique
 
   createdAt Int?
   updatedAt Int?
 
-  user                        user                          @relation(fields: [userId], references: [id])
+  user                        user?                         @relation(fields: [userId], references: [id])
   albums                      album[]
   secondary_artist_track_link secondary_artist_track_link[]
   tracks                      track[]
@@ -166,10 +174,11 @@ model audio {
   s3ObjectKey String?
   size        Int? /// In bytes
   length      Int? /// In seconds
+  fullUrl     String?
 
   createdAt Int?
   updatedAt Int?
-  track     track?
+  track     track[]
 }
 
 model user_listen_track {

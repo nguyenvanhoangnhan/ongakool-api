@@ -16,10 +16,12 @@ import {
   AuthData,
   GetAuthData,
 } from 'src/auth/decorator/get-auth-data.decorator';
+import { ApiTags } from '@nestjs/swagger';
 // import { CreateArtistDto } from './dto/create-artist.dto';
 // import { UpdateArtistDto } from './dto/update-artist.dto';
 
 @Controller('artist')
+@ApiTags('Artist')
 export class ArtistController {
   constructor(private readonly artistService: ArtistService) {}
 
@@ -77,5 +79,10 @@ export class ArtistController {
   @UseGuards(UserGuard)
   getRecentListenArtist(@GetAuthData() authData: AuthData) {
     return this.artistService.getRecentListenArtist(authData);
+  }
+
+  @Get(':id/similar-artists')
+  async getSimilarArtists(@Param('id') id: string) {
+    return this.artistService.external_getSimilarArtists(+id);
   }
 }

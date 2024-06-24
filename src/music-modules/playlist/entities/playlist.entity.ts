@@ -1,3 +1,5 @@
+import { PlainToInstance } from 'src/helpers';
+import { Transform } from 'class-transformer';
 import {
   ApiPropNumber,
   ApiPropStringOptional,
@@ -21,8 +23,11 @@ export class Playlist {
 }
 
 export class PlaylistWithForeign extends Playlist {
-  @ApiPropTypeOptional(User) ownerUser?: User;
+  @ApiPropTypeOptional(User)
+  @Transform(({ obj }) => PlainToInstance(User, obj?.ownerUser))
+  ownerUser?: User;
 
   @ApiPropTypeOptional([Pivot_PlaylistTrackLink])
+  @Transform(({ obj }) => obj?.playlist_track_links)
   playlist_track_links?: Pivot_PlaylistTrackLink[];
 }

@@ -1,3 +1,4 @@
+import { SearchTrackByLyricsQueryDto } from './dto/searchTrackByLyrics-query.dto';
 import {
   Controller,
   Get,
@@ -15,7 +16,7 @@ import { TrackService } from './track.service';
 // import { CreateTrackDto } from './dto/create-track.dto';
 // import { UpdateTrackDto } from './dto/update-track.dto';
 import { FindManyTrackQueryDto } from './dto/findManyTrack.dto';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
   AuthData,
   GetAuthData,
@@ -23,6 +24,7 @@ import {
 import { ToggleLikeTrackDto } from './dto/toggleLikeTrack.dto';
 
 @Controller('track')
+@ApiTags('TRACK')
 export class TrackController {
   constructor(private readonly trackService: TrackService) {}
 
@@ -81,5 +83,21 @@ export class TrackController {
     @GetAuthData() authData: AuthData,
   ) {
     return await this.trackService.toggleLikeTrack(body, authData);
+  }
+
+  @Get('search-by-lyrics')
+  async searchTrackByLyrics(@Query() query: SearchTrackByLyricsQueryDto) {
+    return await this.trackService.external_searchTrackByLyrics(query);
+  }
+
+  @Get('temp___count-least-popular-tracks')
+  async countLeastPopularTracks(
+    @Query('lessThanOrEqual') lessThanOrEqual: number,
+  ) {
+    // throw new ForbiddenException('Forbidden');
+    return {
+      result:
+        await this.trackService.chore_countLeastPopularTracks(+lessThanOrEqual),
+    };
   }
 }

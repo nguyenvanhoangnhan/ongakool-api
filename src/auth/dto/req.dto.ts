@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   IsEmail,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Matches,
   MaxLength,
@@ -18,13 +19,12 @@ export class RegisterDto {
   @IsNotEmpty()
   @ApiProperty({ type: String, required: true, nullable: false })
   @Matches(/^[A-Za-z ]+$/)
-  firstName: string;
+  fullname: string;
 
   @IsString()
-  @IsNotEmpty()
-  @ApiProperty({ type: String, required: true, nullable: false })
-  @Matches(/^[A-Za-z ]+$/)
-  lastName: string;
+  @IsOptional()
+  @ApiProperty({ type: String, required: false, nullable: true })
+  address?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -46,11 +46,22 @@ export class RegisterDto {
 export class LoginDto {
   @IsString()
   @IsNotEmpty()
-  @ApiProperty({ type: String, required: true, nullable: false })
-  username: string;
+  @IsEmail()
+  @ApiProperty({
+    type: String,
+    required: true,
+    nullable: false,
+    example: 'nguyen.vh.nhan@gmail.com',
+  })
+  email: string;
 
   @IsNotEmpty()
-  @ApiProperty({ type: String, required: true, nullable: false })
+  @ApiProperty({
+    type: String,
+    required: true,
+    nullable: false,
+    example: 'hoangnhan1A@',
+  })
   @IsString()
   password: string;
 }
@@ -85,17 +96,9 @@ export class ResetPasswordDto {
   @ApiProperty({ type: String, required: true, nullable: false })
   @IsString()
   @MinLength(6)
-  @MaxLength(20)
+  @MaxLength(32)
   @Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
     message: 'password too weak',
   })
   password: string;
-}
-
-export class CommentToPostDto {
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(255, { message: 'Comment too long' })
-  @ApiProperty({ type: String, required: true, nullable: false })
-  comment: string;
 }

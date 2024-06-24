@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Prisma, user } from '@prisma/client';
@@ -9,6 +13,8 @@ import { PrismaService } from 'src/prisma/prisma.service';
 
 import { LoginDto, RefreshTokenDto, RegisterDto } from './dto/req.dto';
 import { User } from 'src/user/entities/user.entity';
+import { GetUnixNow } from 'src/util/common.util';
+import { S3Service } from 'src/s3/s3.service';
 
 @Injectable()
 export class AuthService {
@@ -16,24 +22,29 @@ export class AuthService {
     private prisma: PrismaService,
     private config: ConfigService,
     private jwt: JwtService,
+    private s3: S3Service,
   ) {}
 
   private readonly jwtSecret = this.config.get('JWT_SECRET');
 
   async register(dto: RegisterDto) {
+    const { email } = dto;
+
+    if (await this.prisma.user.findFirst({ where: { email } })) {
+      throw new BadRequestException('Email already taken');
+    }
+
     const hashedPassword = await argon.hash(dto.password);
     try {
       const user = await this.prisma.user.create({
         data: {
           email: dto.email,
           username: dto.username,
+          fullname: dto.fullname,
           pwdHash: hashedPassword,
-          profile: {
-            create: {
-              firstName: dto.firstName,
-              lastName: dto.lastName,
-            },
-          },
+          avatarImageUrl:
+            'https://ongakool.s3.ap-southeast-1.amazonaws.com/assets/deafultavatar.jpg',
+          createdAt: GetUnixNow(),
         },
       });
 
@@ -49,9 +60,9 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.user.findFirst({
       where: {
-        username: dto.username,
+        email: dto.email,
       },
     });
 
@@ -164,10 +175,6 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: {
         id: userId,
-      },
-      select: {
-        pwdHash: false,
-        pwdSalt: false,
       },
     });
 

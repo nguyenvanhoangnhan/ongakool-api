@@ -37,5 +37,8 @@ lerna-debug.log*
 # Environment
 .env
 
+seed_data
+exported_data
+
 # firebase
 firebase.json

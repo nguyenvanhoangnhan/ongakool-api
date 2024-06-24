@@ -1,12 +1,41 @@
-import { Controller, Get, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Delete,
+  Query,
+  Body,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+  Put,
+} from '@nestjs/common';
 import { UserService } from './user.service';
-import { UserGuard } from 'src/auth/guard/auth.guard';
 import {
   AuthData,
   GetAuthData,
 } from 'src/auth/decorator/get-auth-data.decorator';
+import { PaginationQueryDto, UploadFileDto } from 'src/util/common.dto';
+import { GuardUser } from 'src/decorator/auth.dectorator';
+import { fixPaginationQueryNumber } from 'src/util/chore.util';
+import {
+  ApiOperation,
+  ApiOkResponse,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiTags,
+} from '@nestjs/swagger';
+import { UserGuard } from 'src/auth/guard/auth.guard';
+import { APISummaries } from 'src/helpers';
+import { FastifyFileInterceptor } from 'src/util/file.util';
+import { User } from './entities/user.entity';
+import { UpdateProfileDto } from './dto/req.dto';
 
 @Controller('user')
+@ApiTags('USER')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
@@ -36,32 +65,71 @@ export class UserController {
   }
 
   @Get('recent-play-tracks')
-  @UseGuards(UserGuard)
-  getRecentPlayTracks(@GetAuthData() authData: AuthData) {
-    return this.userService.getRecentPlayTracks(authData);
+  @GuardUser()
+  getRecentPlayTracks(
+    @GetAuthData() authData: AuthData,
+    @Query() query: PaginationQueryDto,
+  ) {
+    fixPaginationQueryNumber(query);
+    return this.userService.getRecentPlayTracks(authData, query);
   }
 
   @Get('most-play-tracks')
-  @UseGuards(UserGuard)
+  @GuardUser()
   getMostPlayTracks(@GetAuthData() authData: AuthData) {
     return this.userService.getMostPlayTracks(authData);
   }
 
   @Get('recent-play-artists')
-  @UseGuards(UserGuard)
-  getRecentPlayArtists(@GetAuthData() authData: AuthData) {
-    return this.userService.getRecentPlayArtists(authData);
+  @GuardUser()
+  getRecentPlayArtists(
+    @GetAuthData() authData: AuthData,
+    @Query() query: PaginationQueryDto,
+  ) {
+    fixPaginationQueryNumber(query);
+    return this.userService.getRecentPlayArtists(authData, query);
   }
 
   @Get('most-play-artists')
-  @UseGuards(UserGuard)
+  @GuardUser()
   getMostPlayArtists(@GetAuthData() authData: AuthData) {
     return this.userService.getMostPlayArtists(authData);
   }
 
   @Get('recent-play-albums')
+  @GuardUser()
+  getRecentPlayAlbums(
+    @GetAuthData() authData: AuthData,
+    @Query() query: PaginationQueryDto,
+  ) {
+    fixPaginationQueryNumber(query);
+    return this.userService.getRecentPlayAlbum(authData, query);
+  }
+
+  @ApiOperation({ summary: APISummaries.USER })
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: String })
+  @ApiBearerAuth()
   @UseGuards(UserGuard)
-  getRecentPlayAlbums(@GetAuthData() authData: AuthData) {
-    return this.userService.getRecentPlayAlbum(authData);
+  @Post('avatar')
+  @UseInterceptors(FastifyFileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  setAvatar(
+    @GetAuthData() user: User,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    @Body() dto: UploadFileDto, // For Swagger
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.userService.setAvatar(user.id, file);
+  }
+
+  @ApiOperation({ summary: APISummaries.USER })
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: String })
+  @ApiBearerAuth()
+  @UseGuards(UserGuard)
+  @Put('profile')
+  updateProfile(@GetAuthData() user: User, @Body() dto: UpdateProfileDto) {
+    return this.userService.updateProfile(user.id, dto);
   }
 }

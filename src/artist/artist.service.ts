@@ -1,5 +1,5 @@
 import { Artist, ArtistWithForeign } from './entities/artist.entity';
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 // import { CreateArtistDto } from './dto/create-artist.dto';
 // import { UpdateArtistDto } from './dto/update-artist.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -7,10 +7,15 @@ import { PlainToInstance, PlainToInstanceList } from 'src/helpers';
 import { FindManyArtistQueryDto } from './dto/findManyArtist.dto';
 import { SearchArtistNameQueryDto } from './dto/searchArtistName.dto';
 import { AuthData } from 'src/auth/decorator/get-auth-data.decorator';
+import { ConfigService } from '@nestjs/config';
+import axios from 'axios';
 
 @Injectable()
 export class ArtistService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private config: ConfigService,
+  ) {}
 
   // TODO
   // create(createArtistDto: CreateArtistDto) {
@@ -116,5 +121,46 @@ export class ArtistService {
 
   remove(id: number) {
     return `This action removes a #${id} artist`;
+  }
+
+  async external_getSimilarArtists(artistId: number) {
+    const artist = await this.prisma.artist.findFirstOrThrow({
+      where: { id: artistId },
+    });
+
+    const spotifyArtistId = artist.spotifyArtistId;
+
+    const apiUrl =
+      this.config.get('externalApi.recommendation.baseUrl') +
+      'recommend-similar-artists';
+    const recommendationResult = await axios
+      .post<{
+        result: string;
+      }>(apiUrl, {
+        artistId: spotifyArtistId,
+      })
+      .then((res) => res.data.result);
+
+    if (!recommendationResult?.length) {
+      throw new BadRequestException('No recommendation tracks found');
+    }
+
+    const similarSpotifyArtistIds = recommendationResult.split(',');
+
+    const similarArtists = await this.prisma.artist.findMany({
+      where: {
+        spotifyArtistId: { in: similarSpotifyArtistIds },
+      },
+    });
+
+    console.log(`Similar Artists for ${artist.name.toUpperCase()}:`);
+    console.table(
+      similarArtists.map((item) => ({
+        id: item.id,
+        name: item.name,
+      })),
+    );
+
+    return PlainToInstanceList(ArtistWithForeign, similarArtists);
   }
 }
