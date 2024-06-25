@@ -13,7 +13,7 @@ import { Pivot_UserListenAlbum } from 'src/pivot/pivots.entity';
 
 export class Album {
   @ApiPropNumber() id: number;
-  @ApiPropNumber() spotifyAlbumId: number;
+  @ApiPropNumber() spotifyAlbumId: string;
   @ApiPropStringOptional() title: string;
 
   @ApiPropNumber() artistId: number;

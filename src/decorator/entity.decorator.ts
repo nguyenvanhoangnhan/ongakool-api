@@ -13,6 +13,17 @@ export function ApiPropNumberOptional() {
   );
 }
 
+export function ApiProp01() {
+  return applyDecorators(Expose(), ApiProperty({ type: Number, enum: [0, 1] }));
+}
+
+export function ApiProp01Optional() {
+  return applyDecorators(
+    Expose(),
+    ApiProperty({ type: Number, enum: [0, 1], required: false }),
+  );
+}
+
 export function ApiPropString() {
   return applyDecorators(Expose(), ApiProperty({ type: String }));
 }

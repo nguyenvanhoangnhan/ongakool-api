@@ -32,14 +32,37 @@ export class TrackService {
     return PlainToInstanceList(Track, tracks);
   }
 
-  async findOne(id: number) {
+  async getById(id: number, authData?: AuthData) {
     const track = await this.prisma.track.findFirst({
       where: {
         id,
       },
+      include: {
+        album: true,
+        audio: true,
+        mainArtist: true,
+        secondary_artist_track_links: {
+          include: {
+            artist: true,
+          },
+        },
+        user_favourite_tracks: authData
+          ? {
+              where: {
+                userId: authData.id,
+              },
+            }
+          : undefined,
+      },
     });
 
-    return PlainToInstance(Track, track);
+    const isFavourite = track?.user_favourite_tracks?.length > 0 ? 1 : 0;
+
+    return PlainToInstance(TrackWithForeign, {
+      ...track,
+      isFavourite,
+      audio: track.audio ? track.audio : { fullUrl: track.previewAudioUrl },
+    });
   }
 
   // update(id: number, updateTrackDto: UpdateTrackDto) {
@@ -51,7 +74,7 @@ export class TrackService {
     return `This action removes a #${id} track`;
   }
 
-  async findMany(filter: FindManyTrackQueryDto) {
+  async getMany(filter: FindManyTrackQueryDto, authData?: AuthData) {
     const tracks = await this.prisma.track.findMany({
       where: {
         id: filter.ids ? { in: filter.ids } : undefined,
@@ -98,16 +121,33 @@ export class TrackService {
           : undefined,
       },
       include: {
+        album: true,
         mainArtist: true,
+        audio: true,
         secondary_artist_track_links: {
           include: {
             artist: true,
           },
         },
+        user_favourite_tracks: authData
+          ? {
+              where: {
+                userId: authData.id,
+              },
+            }
+          : undefined,
       },
     });
 
-    return PlainToInstanceList(TrackWithForeign, tracks);
+    const editedTracks = tracks.map((track) => {
+      return {
+        ...track,
+        isFavourite: track.user_favourite_tracks?.length > 0 ? 1 : 0,
+        audio: track.audio ? track.audio : { fullUrl: track.previewAudioUrl },
+      };
+    });
+
+    return PlainToInstanceList(TrackWithForeign, editedTracks);
   }
 
   async getRecentListenTracks(authData: AuthData) {

@@ -50,8 +50,19 @@ export class SeedController {
 
   @Get('seed-track-popularity')
   async seedTrackPopularity() {
-    // throw new ForbiddenException('Forbidden');
+    throw new ForbiddenException('Forbidden');
     await this.seedService.seedTrackPopularity();
+
+    return {
+      message: 'success',
+    };
+  }
+
+  @Post('seed-audio')
+  async seedAudio() {
+    throw new ForbiddenException('Forbidden');
+
+    await this.seedService.seedAudio();
 
     return {
       message: 'success',

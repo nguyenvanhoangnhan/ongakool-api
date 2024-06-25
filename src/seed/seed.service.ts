@@ -1,14 +1,19 @@
+import { S3Service } from 'src/s3/s3.service';
 /* eslint-disable prefer-const */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Injectable } from '@nestjs/common';
+import { Injectable, createParamDecorator } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as fs from 'fs';
 import { AlbumType } from '@prisma/client';
 import * as moment from 'moment';
+import { GetUnixNow, getDurationFromURL } from 'src/util/common.util';
 
 @Injectable()
 export class SeedService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private s3: S3Service,
+  ) {}
 
   async seedArtist() {
     const dataPath =
@@ -362,5 +367,90 @@ export class SeedService {
       '/Users/hoangnhan1203/Code/DATN/final/ongakool-be/exported_data/spotifyTrackIds.json',
       JSON.stringify(spotifyTrackIds, null, 2),
     );
+  }
+
+  async seedAudio() {
+    // read all files from folder: "/Users/hoangnhan1203/Code/DATN/spotify-dl/Songs/tracks_by_uid"
+    // track is in format: {spotifyTrackId}.mp3
+    // upload each file to S3 and create audio for track
+    // upload to s3, full key /mp3/{spotifyTrackId}.mp3
+
+    const folderPath =
+      '/Users/hoangnhan1203/Code/DATN/spotify-dl/Songs/tracks_by_uid';
+
+    const files = fs.readdirSync(folderPath);
+
+    let index = 0;
+    const notFoundTrackSpotifyIds = [];
+
+    for (const file of files) {
+      const spotifyTrackId = file.replace('.mp3', '');
+
+      const buffer = fs.readFileSync(`${folderPath}/${file}`);
+
+      let duration: number = null;
+      try {
+        duration = (await getDurationFromURL(
+          `${folderPath}/${file}`,
+        )) as number;
+      } catch (err) {
+        // DO NOTHING
+      }
+
+      const { object, fullUrl } = await this.s3.uploadFile({
+        fileBody: buffer,
+        fileName: file,
+        directory: 'mp3',
+      });
+
+      const track = await this.prisma.track.findFirst({
+        where: {
+          OR: [
+            {
+              spotifyTrackId,
+            },
+            {
+              track_spotifySecondTrackId_link: {
+                some: {
+                  spotifySecondTrackId: spotifyTrackId,
+                },
+              },
+            },
+          ],
+        },
+      });
+
+      if (!track) {
+        notFoundTrackSpotifyIds.push(spotifyTrackId);
+      } else {
+        await this.prisma.track.update({
+          where: {
+            id: track.id,
+          },
+          data: {
+            audio: {
+              create: {
+                label: `#${track?.id}->${track?.title}`,
+                path: object,
+                s3ObjectKey: object,
+                fullUrl,
+                length: duration,
+                size: buffer.byteLength,
+                createdAt: GetUnixNow(),
+                updatedAt: GetUnixNow(),
+              },
+            },
+          },
+        });
+      }
+      console.log('UPLOADED index: ', index);
+      index++;
+    }
+    console.log('notFoundTrackSpotifyIds', notFoundTrackSpotifyIds);
+    //TODO: notFoundTrackSpotifyIds [
+    //   '1MAqR81Tz28IIqMJ2KUDAO',
+    //   '3M5eeHXgG4VplKNcsBC8Dj',
+    //   '4pV1bl7OiFW4mMNLmsgQGC'
+    // ]
   }
 }

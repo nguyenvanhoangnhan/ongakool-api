@@ -44,9 +44,6 @@ export class S3Service {
       }
     }
 
-    console.log('::: options.fileName', options.fileName);
-    console.log('::: options.directory', options.directory);
-
     const params = {
       Bucket: this.bucketName,
       Key: String(options.s3Object),

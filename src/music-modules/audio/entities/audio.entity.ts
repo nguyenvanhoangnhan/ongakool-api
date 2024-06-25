@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import {
   ApiPropNumber,
   ApiPropType,
@@ -15,11 +16,17 @@ export class Audio {
   @ApiPropString()
   path: string;
 
+  @ApiPropString()
+  s3ObjectKey: string;
+
   @ApiPropNumber()
   size: number;
 
   @ApiPropNumber()
   length: number;
+
+  @ApiPropString()
+  fullUrl: string;
 
   @ApiPropNumber()
   createdAt: number;
@@ -28,5 +35,6 @@ export class Audio {
   updatedAt: number;
 
   @ApiPropType(Track)
-  track?: Track;
+  @Transform(({ obj }) => obj?.track)
+  track: Track[];
 }

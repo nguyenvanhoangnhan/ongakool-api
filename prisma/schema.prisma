@@ -169,7 +169,7 @@ model playlist_track_link {
 model audio {
   id Int @id @default(autoincrement())
 
-  label       String?
+  label       String? @db.VarChar(512)
   path        String?
   s3ObjectKey String?
   size        Int? /// In bytes

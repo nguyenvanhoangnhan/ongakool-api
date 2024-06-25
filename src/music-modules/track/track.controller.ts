@@ -39,18 +39,18 @@ export class TrackController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return await this.trackService.findOne(+id);
+  @ApiBearerAuth()
+  async getById(@Param('id') id: string, @GetAuthData() authData: AuthData) {
+    return await this.trackService.getById(+id, authData);
   }
 
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateTrackDto: UpdateTrackDto) {
-  //   return this.trackService.update(+id, updateTrackDto);
-  // }
-
   @Get('get-many-by-query')
-  async findMany(@Query() query: FindManyTrackQueryDto) {
-    return await this.trackService.findMany(query);
+  @ApiBearerAuth()
+  async getMany(
+    @Query() query: FindManyTrackQueryDto,
+    @GetAuthData() authData: AuthData,
+  ) {
+    return await this.trackService.getMany(query, authData);
   }
 
   @Get('get-recent')
