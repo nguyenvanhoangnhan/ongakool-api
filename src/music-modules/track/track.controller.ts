@@ -8,7 +8,6 @@ import {
   Param,
   Delete,
   Query,
-  UseGuards,
   Post,
   Body,
   ForbiddenException,
@@ -23,6 +22,7 @@ import {
   GetAuthData,
 } from 'src/auth/decorator/get-auth-data.decorator';
 import { ToggleLikeTrackDto } from './dto/toggleLikeTrack.dto';
+import { ApiBearerUserGuard } from 'src/decorator/auth.dectorator';
 
 @Controller('track')
 @ApiTags('TRACK')
@@ -56,9 +56,9 @@ export class TrackController {
   }
 
   @Get('get-recent')
-  @ApiBearerAuth()
-  @UseGuards(UseGuards)
+  @ApiBearerUserGuard()
   async GetRecentTracks(@GetAuthData() authData: AuthData) {
+    console.log('authData', authData);
     return await this.trackService.getRecentListenTracks(authData);
   }
 
@@ -68,8 +68,7 @@ export class TrackController {
   }
 
   @Post(':id/listen')
-  @ApiBearerAuth()
-  @UseGuards(UseGuards)
+  @ApiBearerUserGuard()
   async listenToTrack(
     @Param('id') id: string,
     @GetAuthData() authData: AuthData,
@@ -78,8 +77,7 @@ export class TrackController {
   }
 
   @Post(':id/toggle-like')
-  @ApiBearerAuth()
-  @UseGuards(UseGuards)
+  @ApiBearerUserGuard()
   async toggleLikeTrack(
     @Body() body: ToggleLikeTrackDto,
     @GetAuthData() authData: AuthData,
@@ -106,5 +104,15 @@ export class TrackController {
       result:
         await this.trackService.chore_countLeastPopularTracks(+lessThanOrEqual),
     };
+  }
+
+  @Get('recently-listening-based-recommendation')
+  @ApiBearerUserGuard()
+  async getRecentlyListeningBasedRecommendation(
+    @GetAuthData() authData: AuthData,
+  ) {
+    return await this.trackService.external_getRecommendBasedOnRecentlyListening(
+      authData.id,
+    );
   }
 }

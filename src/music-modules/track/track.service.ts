@@ -8,11 +8,11 @@ import { PlainToInstance, PlainToInstanceList } from 'src/helpers';
 import { FindManyTrackQueryDto } from './dto/findManyTrack.dto';
 import { isNil } from 'lodash';
 import { Track, TrackWithForeign } from './entities/track.entity';
-import moment from 'moment';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { SearchTrack } from './dto/searchTrackByLyrics-query.dto';
 import { writeFileSync } from 'fs';
+import { GetUnixNow } from 'src/util/common.util';
 
 @Injectable()
 export class TrackService {
@@ -158,13 +158,17 @@ export class TrackService {
       },
       orderBy: { updatedAt: 'desc' },
       include: {
-        track: true,
+        track: {
+          include: {
+            album: true,
+          },
+        },
       },
       take: 20,
     });
 
     return PlainToInstanceList(
-      Track,
+      TrackWithForeign,
       recentTracks.map((i) => i.track),
     );
   }
@@ -209,7 +213,7 @@ export class TrackService {
         },
       },
       update: {
-        updatedAt: moment().unix(),
+        updatedAt: GetUnixNow(),
         listenCount: {
           increment: 1,
         },
@@ -218,8 +222,8 @@ export class TrackService {
         userId: authData.id,
         trackId,
         listenCount: 1,
-        updatedAt: moment().unix(),
-        createdAt: moment().unix(),
+        updatedAt: GetUnixNow(),
+        createdAt: GetUnixNow(),
       },
     });
   }
@@ -324,5 +328,162 @@ export class TrackService {
     );
 
     return count;
+  }
+
+  async external_getRecommendBasedOnRecentlyListening(
+    userId: number,
+  ): Promise<Track[]> {
+    const now = GetUnixNow();
+    const _1hrsAgo = now - 60 * 60;
+
+    const cacheRecommendation =
+      await this.prisma.recent_listening_based_recommendation.findFirst({
+        where: {
+          userId,
+        },
+      });
+
+    if (cacheRecommendation && cacheRecommendation?.updatedAt > _1hrsAgo) {
+      const trackIds = cacheRecommendation.trackIds
+        .split(',')
+        .map((idStr) => +idStr);
+
+      const tracks = await this.prisma.track.findMany({
+        where: {
+          id: {
+            in: trackIds,
+          },
+        },
+        include: {
+          album: true,
+        },
+      });
+
+      return PlainToInstanceList(TrackWithForeign, tracks);
+    }
+
+    console.log('======== FOUND NO CACHE RECOMMENDATION ============');
+
+    const recentlyListen = await this.prisma.user_listen_track.findMany({
+      where: {
+        userId,
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+      include: {
+        track: {
+          include: {
+            track_spotifySecondTrackId_link: true,
+          },
+        },
+      },
+      take: 20,
+    });
+
+    if (recentlyListen.length === 0) {
+      return [];
+    }
+
+    console.log('========RECENTLY LISTEN SONG============');
+    console.table(
+      recentlyListen.map((item) => ({
+        name: item.track.title,
+        artistNames: item.track.artistNames,
+      })),
+    );
+    console.log('========================================');
+
+    const spotifyTrackIdsInPlaylist = recentlyListen.reduce<string[]>(
+      (acc, cur) => {
+        acc.push(cur.track.spotifyTrackId);
+        if (cur.track?.track_spotifySecondTrackId_link?.length > 0) {
+          acc.push(
+            cur.track.track_spotifySecondTrackId_link?.[0].spotifySecondTrackId,
+          );
+        }
+        return acc;
+      },
+      [],
+    );
+
+    const apiUrl =
+      this.config.get('externalApi.recommendation.baseUrl') +
+      'recommend-similar-tracks';
+    const recommendationResult = await axios
+      .post<{
+        result: string;
+      }>(apiUrl, {
+        trackIds: spotifyTrackIdsInPlaylist,
+      })
+      .then((res) => res.data.result);
+
+    console.log('result: ', recommendationResult);
+
+    if (!recommendationResult?.length) {
+      console.log('Recommendation result is empty');
+      return [];
+    }
+
+    const recommendationSpotifyTrackIds = recommendationResult.split(',');
+
+    const recommendationTracks = await this.prisma.track.findMany({
+      where: {
+        OR: [
+          // Condition 1: Track's spotify id is in recommendation list
+          {
+            spotifyTrackId: {
+              in: recommendationSpotifyTrackIds,
+            },
+          },
+          // Condition 2: Track's second spotify id is in recommendation list
+          {
+            track_spotifySecondTrackId_link: {
+              some: {
+                spotifySecondTrackId: {
+                  in: recommendationSpotifyTrackIds,
+                },
+              },
+            },
+          },
+        ],
+      },
+      include: {
+        track_spotifySecondTrackId_link: true,
+        album: true,
+      },
+    });
+    console.log('Recommendation Tracks:');
+    console.table(
+      recommendationTracks.map((item) => ({
+        id: item.id,
+        name: item.title,
+        artistNames: item.artistNames,
+      })),
+    );
+
+    const recommendationTrackIds = recommendationTracks.map((i) => i.id);
+    if (
+      recommendationTrackIds.length > 0 &&
+      (!cacheRecommendation || cacheRecommendation?.updatedAt > _1hrsAgo)
+    ) {
+      await this.prisma.recent_listening_based_recommendation.upsert({
+        where: {
+          userId,
+        },
+        update: {
+          trackIds: recommendationTrackIds.join(','),
+          updatedAt: now,
+        },
+        create: {
+          userId,
+          trackIds: recommendationTrackIds.join(','),
+          createdAt: now,
+          updatedAt: now,
+        },
+      });
+    }
+
+    return PlainToInstanceList(TrackWithForeign, recommendationTracks);
   }
 }

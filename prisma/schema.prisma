@@ -28,14 +28,15 @@ model user {
   createdAt Int?
   updatedAt Int?
 
-  profile               profile?
-  artist                artist[]
-  user_listen_track     user_listen_track[]
-  user_listen_album     user_listen_album[]
-  playlist              playlist[]
-  user_favourite_tracks user_favourite_track[] @relation("user_favourite_track_user_fk")
-  rbac_user_role_links  rbac_user_role_link[]
-  user_listen_artist    user_listen_artist[]
+  profile                               profile?
+  artist                                artist[]
+  user_listen_track                     user_listen_track[]
+  user_listen_album                     user_listen_album[]
+  playlist                              playlist[]
+  user_favourite_tracks                 user_favourite_track[]                 @relation("user_favourite_track_user_fk")
+  rbac_user_role_links                  rbac_user_role_link[]
+  user_listen_artist                    user_listen_artist[]
+  recent_listening_based_recommendation recent_listening_based_recommendation?
 }
 
 model profile {
@@ -265,6 +266,18 @@ model rbac_permission {
   displayName               String?
   description               String?
   rbac_role_permission_link rbac_role_permission_link[]
+}
+
+model recent_listening_based_recommendation {
+  id Int @id @default(autoincrement())
+
+  userId   Int    @unique
+  trackIds String @db.Text
+
+  createdAt Int?
+  updatedAt Int?
+
+  user user @relation(fields: [userId], references: [id])
 }
 
 model rbac_role {

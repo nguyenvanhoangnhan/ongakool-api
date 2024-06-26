@@ -294,7 +294,7 @@ export class PlaylistService {
 
     const apiUrl =
       this.config.get('externalApi.recommendation.baseUrl') +
-      'recommend-tracks-for-playlist';
+      'recommend-similar-tracks';
     const recommendationResult = await axios
       .post<{
         result: string;

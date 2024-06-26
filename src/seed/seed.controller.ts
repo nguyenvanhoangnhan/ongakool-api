@@ -90,4 +90,15 @@ export class SeedController {
       message: 'success',
     };
   }
+
+  @Post('update-empty-title')
+  async updateEmptyTitle() {
+    throw new ForbiddenException('Forbidden');
+
+    await this.seedService.updateEmptyTitle();
+
+    return {
+      message: 'success',
+    };
+  }
 }

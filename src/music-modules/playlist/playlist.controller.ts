@@ -26,7 +26,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { GuardUser } from 'src/decorator/auth.dectorator';
+import { ApiBearerUserGuard } from 'src/decorator/auth.dectorator';
 import { SuccessMessageResp } from 'src/util/common.util';
 import { UpdatePlaylistDto } from './dto/updatePlaylist.dto';
 import { UserGuard } from 'src/auth/guard/auth.guard';
@@ -41,7 +41,7 @@ export class PlaylistController {
   constructor(private readonly playlistService: PlaylistService) {}
 
   @Post()
-  @GuardUser()
+  @ApiBearerUserGuard()
   create(
     @GetAuthData()
     authData: AuthData,
@@ -60,13 +60,13 @@ export class PlaylistController {
   }
 
   @Get('mine')
-  @GuardUser()
+  @ApiBearerUserGuard()
   getMyPlaylists(@GetAuthData() authData: AuthData) {
     return this.playlistService.getMyPlaylists(authData);
   }
 
   @Post('/add-track')
-  @GuardUser()
+  @ApiBearerUserGuard()
   async addTrackToPlaylist(
     @Body() body: AddTrackToPlaylistDto,
     @GetAuthData() authData: AuthData,
@@ -95,7 +95,7 @@ export class PlaylistController {
     return SuccessMessageResp();
   }
 
-  @GuardUser()
+  @ApiBearerUserGuard()
   @Put(':id')
   async updatePlaylistCover(
     @Param('id') id: string,

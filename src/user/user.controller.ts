@@ -19,7 +19,7 @@ import {
   GetAuthData,
 } from 'src/auth/decorator/get-auth-data.decorator';
 import { PaginationQueryDto, UploadFileDto } from 'src/util/common.dto';
-import { GuardUser } from 'src/decorator/auth.dectorator';
+import { ApiBearerUserGuard } from 'src/decorator/auth.dectorator';
 import { fixPaginationQueryNumber } from 'src/util/chore.util';
 import {
   ApiOperation,
@@ -65,7 +65,7 @@ export class UserController {
   }
 
   @Get('recent-play-tracks')
-  @GuardUser()
+  @ApiBearerUserGuard()
   getRecentPlayTracks(
     @GetAuthData() authData: AuthData,
     @Query() query: PaginationQueryDto,
@@ -75,13 +75,13 @@ export class UserController {
   }
 
   @Get('most-play-tracks')
-  @GuardUser()
+  @ApiBearerUserGuard()
   getMostPlayTracks(@GetAuthData() authData: AuthData) {
     return this.userService.getMostPlayTracks(authData);
   }
 
   @Get('recent-play-artists')
-  @GuardUser()
+  @ApiBearerUserGuard()
   getRecentPlayArtists(
     @GetAuthData() authData: AuthData,
     @Query() query: PaginationQueryDto,
@@ -91,13 +91,13 @@ export class UserController {
   }
 
   @Get('most-play-artists')
-  @GuardUser()
+  @ApiBearerUserGuard()
   getMostPlayArtists(@GetAuthData() authData: AuthData) {
     return this.userService.getMostPlayArtists(authData);
   }
 
   @Get('recent-play-albums')
-  @GuardUser()
+  @ApiBearerUserGuard()
   getRecentPlayAlbums(
     @GetAuthData() authData: AuthData,
     @Query() query: PaginationQueryDto,

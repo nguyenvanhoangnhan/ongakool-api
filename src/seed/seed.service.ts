@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import { AlbumType } from '@prisma/client';
 import * as moment from 'moment';
 import { GetUnixNow, getDurationFromURL } from 'src/util/common.util';
+import axios from 'axios';
 
 @Injectable()
 export class SeedService {
@@ -617,5 +618,43 @@ export class SeedService {
     }
 
     console.log('DONE', failedTrackIds);
+  }
+
+  async updateEmptyTitle() {
+    const tracks = await this.prisma.track.findMany({
+      where: {
+        title: '',
+      },
+    });
+
+    for (const track of tracks) {
+      const spotifyTrackId = track.spotifyTrackId;
+      console.log('spotifyTrackId', spotifyTrackId);
+
+      // https://api.spotify.com/v1/tracks/11dFghVXANMlKmJXsNCbNl <-- call axios to this
+
+      const trackData = await axios
+        .get('https://api.spotify.com/v1/tracks/' + spotifyTrackId, {
+          headers: {
+            Authorization: `Bearer đã che`,
+          },
+        })
+        .then((res) => res.data);
+
+      if (!trackData) {
+        console.log('trackData not found for spotifyTrackId: ', spotifyTrackId);
+        continue;
+      }
+      console.log('found trackData: ', trackData?.name);
+
+      await this.prisma.track.update({
+        where: {
+          id: track.id,
+        },
+        data: {
+          title: trackData.name,
+        },
+      });
+    }
   }
 }
