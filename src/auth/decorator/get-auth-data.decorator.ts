@@ -12,4 +12,4 @@ export const GetAuthData = createParamDecorator(
   },
 );
 
-export type AuthData = Pick<user, 'id' | 'email' | 'username'>;
+export type AuthData = Pick<user, 'id' | 'email'>;

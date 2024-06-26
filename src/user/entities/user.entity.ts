@@ -16,10 +16,10 @@ import { Transform } from 'class-transformer';
 export class User {
   @ApiPropNumber() id: number;
 
-  @ApiPropString() username: string;
   @ApiPropString() email: string;
   // @ApiPropString() pwdHash: string;
   // @ApiPropString() pwdSalt: string;
+  @ApiPropString() fullname: string;
   @ApiPropString() avatarImageUrl: string;
   @ApiPropNumber() createdAt: number;
   @ApiPropNumber() updatedAt: number;

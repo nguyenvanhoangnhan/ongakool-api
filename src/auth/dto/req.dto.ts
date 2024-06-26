@@ -26,12 +26,6 @@ export class RegisterDto {
   @ApiProperty({ type: String, required: false, nullable: true })
   address?: string;
 
-  @IsString()
-  @IsNotEmpty()
-  @ApiProperty({ type: String, required: true, nullable: false })
-  @Matches(/^[a-zA-Z0-9_]{6,20}$/)
-  username: string;
-
   @IsNotEmpty()
   @ApiProperty({ type: String, required: true, nullable: false })
   @IsString()

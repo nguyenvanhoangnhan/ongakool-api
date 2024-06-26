@@ -16,10 +16,9 @@ datasource db {
 model user {
   id Int @id @default(autoincrement())
 
-  username String  @unique
-  email    String
-  pwdHash  String?
-  pwdSalt  String?
+  email   String  @unique
+  pwdHash String?
+  pwdSalt String?
 
   fullname String?
 

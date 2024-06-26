@@ -19,8 +19,4 @@ export class AuthPayload {
   @Expose()
   @ApiProperty({ type: String })
   email: string;
-
-  @Expose()
-  @ApiProperty({ type: String })
-  username: string;
 }
