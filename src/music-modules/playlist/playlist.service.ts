@@ -1,6 +1,9 @@
+import { UpdatePlaylistDto } from './dto/updatePlaylist.dto';
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { PlainToInstance, PlainToInstanceList } from 'src/helpers';
@@ -12,6 +15,9 @@ import { Track } from 'src/music-modules/track/entities/track.entity';
 import { GetUnixNow } from 'src/util/common.util';
 import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
+import * as path from 'path';
+import { v4 as uuidv4 } from 'uuid';
+import { S3Service } from 'src/s3/s3.service';
 
 // import { UpdatePlaylistDto } from './dto/update-playlist.dto';
 @Injectable()
@@ -19,6 +25,7 @@ export class PlaylistService {
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
+    private s3: S3Service,
   ) {}
 
   async create(authData: AuthData) {
@@ -28,7 +35,7 @@ export class PlaylistService {
 
     const newPlaylist = await this.prisma.playlist.create({
       data: {
-        coverImageUrl: 'https://via.placeholder.com/150?text=Playlist+Cover',
+        coverImageUrl: 'https://via.placeholder.com/500?text=Playlist',
         name: `Playlist ${createdCount + 1}`,
         ownerUser: {
           connect: {
@@ -43,6 +50,74 @@ export class PlaylistService {
 
   findAll() {
     return `This action returns all playlist`;
+  }
+
+  async update(id: number, dto: UpdatePlaylistDto, authData: AuthData) {
+    const playlist = await this.prisma.playlist.findFirst({
+      where: {
+        id,
+      },
+    });
+
+    if (!playlist) throw new NotFoundException('Playlist not found');
+
+    if (playlist.ownerUserId !== authData.id) {
+      throw new ForbiddenException('Only owner can update playlist');
+    }
+
+    await this.prisma.playlist.update({
+      where: {
+        id,
+      },
+      data: {
+        name: dto.name ?? undefined,
+      },
+    });
+  }
+
+  async setCover(
+    playlistId: number,
+    file: Express.Multer.File,
+    authData: AuthData,
+  ) {
+    const playlist = await this.prisma.playlist.findFirst({
+      where: {
+        id: playlistId,
+      },
+    });
+
+    if (!playlist) {
+      throw new NotFoundException('Playlist not found');
+    }
+
+    if (playlist.ownerUserId !== authData.id) {
+      throw new UnauthorizedException('You are not the owner of this playlist');
+    }
+
+    const { fullUrl } = await this.s3.uploadFile({
+      fileBody: file.buffer,
+      directory: 'playlist-cover',
+      fileName: `cover_${playlistId}_${uuidv4()}${path.extname(file.originalname)}`,
+    });
+
+    if (!fullUrl) throw new BadRequestException('Failed to upload image');
+
+    await this.prisma.playlist.update({
+      where: {
+        id: playlistId,
+      },
+      data: {
+        coverImageUrl: fullUrl,
+      },
+    });
+
+    //delete current cover image
+    if (playlist.coverImageUrl && this.s3.matchUrl(playlist.coverImageUrl)) {
+      const objectKey = this.s3.getObjectKeyFromUrl(playlist.coverImageUrl);
+      await this.s3.deleteFiles([{ key: objectKey }]);
+    }
+
+    return fullUrl;
   }
 
   async findOne(id: number) {

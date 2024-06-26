@@ -3,7 +3,7 @@ import {
   ValidateApiPropOptionalNumber,
 } from 'src/decorator/validate.decorators';
 
-export class SearchTrackByLyricsQueryDto {
+export class SearchTrack {
   @ValidateApiPropRequiredString()
   text: string;
 

@@ -115,12 +115,12 @@ export class UserController {
   @UseInterceptors(FastifyFileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
   setAvatar(
-    @GetAuthData() user: User,
+    @GetAuthData() authData: AuthData,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     @Body() dto: UploadFileDto, // For Swagger
     @UploadedFile() file: Express.Multer.File,
   ) {
-    return this.userService.setAvatar(user.id, file);
+    return this.userService.setAvatar(authData.id, file);
   }
 
   @ApiOperation({ summary: APISummaries.USER })

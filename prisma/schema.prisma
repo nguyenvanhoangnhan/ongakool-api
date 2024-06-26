@@ -76,6 +76,7 @@ model track {
   user_favourite_tracks           user_favourite_track[]            @relation("user_favourite_track_track_fk")
   secondary_artist_track_links    secondary_artist_track_link[]
   track_spotifySecondTrackId_link track_spotifySecondTrackId_link[]
+  lyrics                          lyrics?
 
   @@index([spotifyTrackId], name: "track_spotifyTrackId_index")
 }
@@ -242,6 +243,18 @@ model track_spotifySecondTrackId_link {
 
   trackId              Int
   spotifySecondTrackId String @db.VarChar(22)
+
+  track track @relation(fields: [trackId], references: [id])
+}
+
+model lyrics {
+  id Int @id @default(autoincrement())
+
+  trackId Int     @unique
+  content String? @db.Text
+
+  createdAt Int?
+  updatedAt Int?
 
   track track @relation(fields: [trackId], references: [id])
 }

@@ -6,6 +6,12 @@ import {
   // Patch,
   Param,
   Delete,
+  HttpCode,
+  HttpStatus,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+  Put,
 } from '@nestjs/common';
 import { PlaylistService } from './playlist.service';
 import {
@@ -13,9 +19,20 @@ import {
   GetAuthData,
 } from 'src/auth/decorator/get-auth-data.decorator';
 import { AddTrackToPlaylistDto } from './dto/addTrackToPlaylist.dto';
-import { ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { GuardUser } from 'src/decorator/auth.dectorator';
 import { SuccessMessageResp } from 'src/util/common.util';
+import { UpdatePlaylistDto } from './dto/updatePlaylist.dto';
+import { UserGuard } from 'src/auth/guard/auth.guard';
+import { APISummaries } from 'src/helpers';
+import { UploadFileDto } from 'src/util/common.dto';
+import { FastifyFileInterceptor } from 'src/util/file.util';
 // import { UpdatePlaylistDto } from './dto/update-playlist.dto';
 
 @Controller('playlist')
@@ -59,13 +76,36 @@ export class PlaylistController {
     return SuccessMessageResp();
   }
 
-  // @Patch(':id')
-  // update(
-  //   @Param('id') id: string,
-  //   @Body() updatePlaylistDto: UpdatePlaylistDto,
-  // ) {
-  //   return this.playlistService.update(+id, updatePlaylistDto);
-  // }
+  @ApiOperation({ summary: APISummaries.USER })
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: String })
+  @ApiBearerAuth()
+  @UseGuards(UserGuard)
+  @Post(':id/set-cover')
+  @UseInterceptors(FastifyFileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  async setPlaylistCover(
+    @Param('id') id: string,
+    @GetAuthData() authData: AuthData,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    @Body() dto: UploadFileDto, // For Swagger
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    await this.playlistService.setCover(+id, file, authData);
+    return SuccessMessageResp();
+  }
+
+  @GuardUser()
+  @Put(':id')
+  async updatePlaylistCover(
+    @Param('id') id: string,
+    @Body() updatePlaylistDto: UpdatePlaylistDto,
+    @GetAuthData() authData: AuthData,
+  ) {
+    await this.playlistService.update(+id, updatePlaylistDto, authData);
+
+    return SuccessMessageResp();
+  }
 
   @Delete(':id')
   async remove(@Param('id') id: string) {

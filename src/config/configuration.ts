@@ -9,7 +9,7 @@ export default () => ({
   },
   apiVersion: 'v1',
   defaultAvatar:
-    'https://firebasestorage.googleapis.com/v0/b/pbl6-a7d3b.appspot.com/o/media%2Fdefault%2Fdefault.jpg?alt=media',
+    'https://ongakool.s3.ap-southeast-1.amazonaws.com/assets/deafultavatar.jpg',
   externalApi: {
     recommendation: {
       baseUrl: process.env.RECOMMENDATION_API_URL || 'http://127.0.0.1:8000/',

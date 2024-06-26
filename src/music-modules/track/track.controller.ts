@@ -1,4 +1,4 @@
-import { SearchTrackByLyricsQueryDto } from './dto/searchTrackByLyrics-query.dto';
+import { SearchTrack } from './dto/searchTrackByLyrics-query.dto';
 import {
   Controller,
   Get,
@@ -11,6 +11,7 @@ import {
   UseGuards,
   Post,
   Body,
+  ForbiddenException,
 } from '@nestjs/common';
 import { TrackService } from './track.service';
 // import { CreateTrackDto } from './dto/create-track.dto';
@@ -35,6 +36,7 @@ export class TrackController {
 
   @Get()
   async findAll() {
+    throw new ForbiddenException('Forbidden');
     return await this.trackService.findAll();
   }
 
@@ -86,8 +88,13 @@ export class TrackController {
   }
 
   @Get('search-by-lyrics')
-  async searchTrackByLyrics(@Query() query: SearchTrackByLyricsQueryDto) {
+  async searchTrackByLyrics(@Query() query: SearchTrack) {
     return await this.trackService.external_searchTrackByLyrics(query);
+  }
+
+  @Get('search-by-title')
+  async searchTrackByTitle(@Query() query: SearchTrack) {
+    return await this.trackService.searchTrackByTitle(query);
   }
 
   @Get('temp___count-least-popular-tracks')

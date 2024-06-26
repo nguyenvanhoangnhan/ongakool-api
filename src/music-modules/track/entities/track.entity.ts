@@ -16,6 +16,7 @@ import { Artist } from 'src/artist/entities/artist.entity';
 import { Transform } from 'class-transformer';
 import { PlainToInstance } from 'src/helpers';
 import { ValidateApiPropOptionalString } from 'src/decorator/validate.decorators';
+import { Lyrics } from './lyrics.entity';
 
 export class Track {
   @ApiPropString() id: number;
@@ -43,6 +44,10 @@ export class TrackWithForeign extends Track {
   @ApiPropTypeOptional(Audio)
   @Transform(({ obj }) => PlainToInstance(Audio, obj?.audio))
   audio?: Audio;
+
+  @ApiPropTypeOptional(Lyrics)
+  @Transform(({ obj }) => PlainToInstance(Lyrics, obj?.lyrics))
+  lyrics?: Lyrics;
 
   @ApiPropTypeOptional([Pivot_UserListenTrack])
   @Transform(({ obj }) =>

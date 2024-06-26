@@ -11,7 +11,7 @@ import { Track, TrackWithForeign } from './entities/track.entity';
 import moment from 'moment';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import { SearchTrackByLyricsQueryDto } from './dto/searchTrackByLyrics-query.dto';
+import { SearchTrack } from './dto/searchTrackByLyrics-query.dto';
 import { writeFileSync } from 'fs';
 
 @Injectable()
@@ -41,6 +41,7 @@ export class TrackService {
         album: true,
         audio: true,
         mainArtist: true,
+        lyrics: true,
         secondary_artist_track_links: {
           include: {
             artist: true,
@@ -223,7 +224,29 @@ export class TrackService {
     });
   }
 
-  async external_searchTrackByLyrics(query: SearchTrackByLyricsQueryDto) {
+  async searchTrackByTitle(query: SearchTrack) {
+    const searchText = query.text.trim().toLowerCase();
+
+    const tracks = await this.prisma.track.findMany({
+      where: {
+        title: {
+          contains: searchText,
+        },
+      },
+      orderBy: {
+        temp_popularity: 'desc',
+      },
+      take: query.limit ?? 20,
+      include: {
+        mainArtist: true,
+        album: true,
+      },
+    });
+
+    return PlainToInstanceList(Track, tracks);
+  }
+
+  async external_searchTrackByLyrics(query: SearchTrack) {
     const apiUrl =
       this.config.get('externalApi.searchByLyrics.baseUrl') +
       'search-track-by-lyrics';

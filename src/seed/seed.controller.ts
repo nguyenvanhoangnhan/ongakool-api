@@ -60,9 +60,31 @@ export class SeedController {
 
   @Post('seed-audio')
   async seedAudio() {
-    throw new ForbiddenException('Forbidden');
+    // throw new ForbiddenException('Forbidden');
 
     await this.seedService.seedAudio();
+
+    return {
+      message: 'success',
+    };
+  }
+
+  @Post('getSomeTracksThatNotHaveAudio')
+  async getSomeTracksThatNotHaveAudio() {
+    throw new ForbiddenException('Forbidden');
+
+    await this.seedService.getSomeTracksThatNotHaveAudio();
+
+    return {
+      message: 'success',
+    };
+  }
+
+  @Post('seed-track-lyrics')
+  async seedTrackLyrics() {
+    throw new ForbiddenException('Forbidden');
+
+    await this.seedService.seedLyrics();
 
     return {
       message: 'success',

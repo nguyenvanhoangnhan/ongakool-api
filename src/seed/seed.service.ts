@@ -370,13 +370,13 @@ export class SeedService {
   }
 
   async seedAudio() {
-    // read all files from folder: "/Users/hoangnhan1203/Code/DATN/spotify-dl/Songs/tracks_by_uid"
+    // read all files from folder: "/Users/hoangnhan1203/Code/DATN/spotify-dl/Songs/tracks_by_uid2"
     // track is in format: {spotifyTrackId}.mp3
     // upload each file to S3 and create audio for track
     // upload to s3, full key /mp3/{spotifyTrackId}.mp3
 
     const folderPath =
-      '/Users/hoangnhan1203/Code/DATN/spotify-dl/Songs/tracks_by_uid';
+      '/Users/hoangnhan1203/Code/DATN/spotify-dl/Songs/tracks_by_uid2';
 
     const files = fs.readdirSync(folderPath);
 
@@ -452,5 +452,170 @@ export class SeedService {
     //   '3M5eeHXgG4VplKNcsBC8Dj',
     //   '4pV1bl7OiFW4mMNLmsgQGC'
     // ]
+  }
+
+  async getSomeTracksThatNotHaveAudio() {
+    const Artists = [
+      'Eagles',
+      'Led Zeppelin',
+      'The Beatles',
+      'The Rolling Stones',
+      'Queen',
+      'Taylor Swift',
+      'Ed Sheeran',
+      'One Direction',
+      '5 Seconds of Summer',
+      'Linkin Park',
+      'Westlife',
+      'The Weeknd',
+      'Boney M.',
+      'Bob Marley & The Wailers',
+      'ABBA',
+      'Electric Light Orchestra',
+      'George Harrison',
+      'Tom Petty',
+      'Tom Petty & The Heartbreakers',
+    ];
+
+    const tracks = await this.prisma.track.findMany({
+      where: {
+        audioId: {
+          equals: null,
+        },
+        OR: [
+          {
+            mainArtist: {
+              name: {
+                in: Artists,
+              },
+            },
+          },
+          {
+            secondary_artist_track_links: {
+              some: {
+                artist: {
+                  name: {
+                    in: Artists,
+                  },
+                },
+              },
+            },
+          },
+        ],
+      },
+      include: {
+        mainArtist: true,
+        album: true,
+        secondary_artist_track_links: {
+          include: {
+            artist: true,
+          },
+        },
+      },
+    });
+
+    const trackIds = tracks.map((track) => track.spotifyTrackId);
+    // write to file exported_data/some_tracks_not_have_audio.json
+    fs.writeFileSync(
+      '/Users/hoangnhan1203/Code/DATN/final/ongakool-be/exported_data/some_tracks_not_have_audio.json',
+      JSON.stringify(trackIds, null, 2),
+    );
+
+    /**
+     * ["0UaMYEvWZi0ZqiDOoHU3YI": {
+          "id": "0UaMYEvWZi0ZqiDOoHU3YI",
+          "name": "Lose Control (feat. Ciara & Fat Man Scoop)",
+          "albumName": "The Cookbook",
+          "artistNames": ["Missy Elliott", "Ciara", "Fatman Scoop"]
+        },]
+     */
+
+    const tracksData = tracks.map((track) => ({
+      id: track.spotifyTrackId,
+      name: track.title,
+      albumName: track.album.title,
+      artistNames: [
+        track.mainArtist.name,
+        ...track.secondary_artist_track_links.map((link) => link.artist.name),
+      ],
+    }));
+
+    fs.writeFileSync(
+      '/Users/hoangnhan1203/Code/DATN/final/ongakool-be/exported_data/some_tracks_not_have_audio_data.json',
+      JSON.stringify(tracksData, null, 2),
+    );
+
+    console.log('DONE');
+  }
+
+  async seedLyrics() {
+    // read seed_data/lyrics_0_170k.json
+
+    /* example:
+    [
+        {
+            "trackId": "00180Qs8hLhDKbURCVwI0k",
+            "lyrics": "Though I long to,\nThough I try to,\nFigure it out I'm told,\nThere's no way of knowing.\nStill I long to,\nLong to know.\nHold on through it,\nPray I'll fool it,\nLoosing it all I'm told,\nAt the rate I'm going.\nNever learning,\nNever close.\nI will prove it,\nHold on to it,\nGive it my heart and soul,\nWith the chance I'll loose it.\nWhen I find you,\nI will know.\nNext to nothing,\nFar from over,\nClose to nowhere.\n\n"
+        },
+        {
+            "trackId": "003TX6Rgr4WXTLxOZrECwd",
+            "lyrics": "Vai ser difícil, vai\nEncontrar um amor como o seu, ai\nComo dói no meu peito\nSeu gosto é bem do jeito que eu gosto\nBem do jeito, lamento\nQue é só mais um lamento entre tantos já feitos\nQuisera desse jeito lembrar de outros tempos\nSó pra matar um pouco a saudade\nMesmo assim querendo que você não ouça\nMeu grito aqui de longe\nMinha dor, meu lamento\n♪\nVai ser difícil, vai\nEncontrar um amor como o seu, ai\nComo dói no meu peito\nSeu gosto é bem do jeito que eu gosto\n\nBem do jeito, lamento\nQue é só mais um lamento entre tantos já feitos\nQuisera desse jeito lembrar de outros tempos\nSó pra matar um pouco a saudade\nMesmo assim querendo que você não ouça\nMeu grito aqui de longe\nMinha dor, meu lamento\nQue é só mais um lamento entre tantos já feitos\nQuisera desse jeito lembrar de outros tempos\nSó pra matar um pouco a saudade\nMesmo assim querendo que você não ouça\nMeu grito aqui de longe\nMinha dor, meu lamento\n\n"
+        },...
+    */
+
+    const lyricsData = JSON.parse(
+      fs.readFileSync(
+        '/Users/hoangnhan1203/Code/DATN/final/ongakool-be/seed_data/lyrics_0_170k.json',
+        'utf8',
+      ),
+    );
+
+    const failedTrackIds = [];
+
+    for (const { trackId, lyrics } of lyricsData) {
+      // if lyrics not string -=> skip
+      if (typeof lyrics !== 'string') {
+        continue;
+      }
+
+      const track = await this.prisma.track.findFirst({
+        where: {
+          OR: [
+            {
+              spotifyTrackId: trackId,
+            },
+            {
+              track_spotifySecondTrackId_link: {
+                some: {
+                  spotifySecondTrackId: trackId,
+                },
+              },
+            },
+          ],
+        },
+      });
+
+      if (!track) {
+        continue;
+      }
+
+      try {
+        await this.prisma.lyrics.create({
+          data: {
+            track: {
+              connect: {
+                id: track.id,
+              },
+            },
+            content: lyrics,
+          },
+        });
+      } catch (error) {
+        console.log('Error at trackId: ', trackId);
+        failedTrackIds.push(trackId);
+      }
+    }
+
+    console.log('DONE', failedTrackIds);
   }
 }
