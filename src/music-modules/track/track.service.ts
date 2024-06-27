@@ -19,7 +19,38 @@ export class TrackService {
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
-  ) {}
+  ) {
+    this.prisma.track
+      .findMany({
+        where: {
+          id: {
+            in: [
+              456, 461, 473, 4658, 6751, 6752, 6866, 10553, 10870, 22137, 46883,
+              47732, 76, 1636, 3296, 2134, 4443, 7609, 11473, 23681, 59457, 65,
+              79, 8188, 31437, 31439, 33901, 4655, 10664, 28940, 15530, 1065,
+              328, 2368, 2122, 4065, 8860, 1734, 3930, 15487, 16932, 8964, 2132,
+              4408, 347, 4601, 4600, 4602, 37009,
+            ],
+          },
+        },
+        select: {
+          id: true,
+          spotifyTrackId: true,
+          title: true,
+          audio: {
+            select: {
+              fullUrl: true,
+            },
+          },
+        },
+      })
+      .then((data) => {
+        writeFileSync(
+          'exported_data/test_tracks.json',
+          JSON.stringify(data, null, 2),
+        );
+      });
+  }
 
   // create(createTrackDto: CreateTrackDto) {
   //   console.log(createTrackDto);
@@ -87,7 +118,7 @@ export class TrackService {
             mainArtist:
               !isNil(filter.artistId) || !isNil(filter.spotifyArtistId)
                 ? {
-                    id: !isNil(filter.artistId) ? filter.artistId : undefined,
+                    id: !isNil(filter.artistId) ? +filter.artistId : undefined,
                     spotifyArtistId: !isNil(filter.spotifyArtistId)
                       ? filter.spotifyArtistId
                       : undefined,
@@ -101,7 +132,7 @@ export class TrackService {
                     some: {
                       artist: {
                         id: !isNil(filter.artistId)
-                          ? filter.artistId
+                          ? +filter.artistId
                           : undefined,
                         spotifyArtistId: !isNil(filter.spotifyArtistId)
                           ? filter.spotifyArtistId
@@ -138,6 +169,16 @@ export class TrackService {
             }
           : undefined,
       },
+      orderBy: {
+        temp_popularity: 'desc',
+      },
+      skip: filter.page ? (+filter.page - 1) * +filter.pageSize : undefined,
+      take: +filter.pageSize,
+    });
+
+    console.log({
+      skip: filter.page ? (+filter.page - 1) * +filter.pageSize : undefined,
+      take: +filter.pageSize,
     });
 
     const editedTracks = tracks.map((track) => {
@@ -161,6 +202,7 @@ export class TrackService {
         track: {
           include: {
             album: true,
+            mainArtist: true,
           },
         },
       },
@@ -205,6 +247,54 @@ export class TrackService {
   }
 
   async listenTrack(trackId: number, authData: AuthData) {
+    const track = await this.prisma.track.findFirst({
+      where: {
+        id: trackId,
+      },
+    });
+
+    this.prisma.user_listen_artist.upsert({
+      where: {
+        user_listen_artist_userId_artistId_unique: {
+          userId: authData.id,
+          artistId: track.mainArtistId,
+        },
+      },
+      update: {
+        updatedAt: GetUnixNow(),
+        listenCount: {
+          increment: 1,
+        },
+      },
+      create: {
+        userId: authData.id,
+        artistId: track.mainArtistId,
+        listenCount: 1,
+        updatedAt: GetUnixNow(),
+        createdAt: GetUnixNow(),
+      },
+    });
+
+    if (track.albumId) {
+      this.prisma.user_listen_album.upsert({
+        where: {
+          user_listen_album_userId_albumId_unique: {
+            userId: authData.id,
+            albumId: track.albumId,
+          },
+        },
+        update: {
+          updatedAt: GetUnixNow(),
+        },
+        create: {
+          userId: authData.id,
+          albumId: track.albumId,
+          updatedAt: GetUnixNow(),
+          createdAt: GetUnixNow(),
+        },
+      });
+    }
+
     return this.prisma.user_listen_track.upsert({
       where: {
         user_listen_track_userId_trackId_unique: {
@@ -356,6 +446,7 @@ export class TrackService {
         },
         include: {
           album: true,
+          mainArtist: true,
         },
       });
 
@@ -382,7 +473,7 @@ export class TrackService {
     });
 
     if (recentlyListen.length === 0) {
-      return [];
+      return await this.getMostPopularTracks();
     }
 
     console.log('========RECENTLY LISTEN SONG============');
@@ -422,29 +513,47 @@ export class TrackService {
 
     if (!recommendationResult?.length) {
       console.log('Recommendation result is empty');
-      return [];
+      return await this.getMostPopularTracks();
     }
 
     const recommendationSpotifyTrackIds = recommendationResult.split(',');
 
     const recommendationTracks = await this.prisma.track.findMany({
       where: {
-        OR: [
-          // Condition 1: Track's spotify id is in recommendation list
+        AND: [
           {
-            spotifyTrackId: {
-              in: recommendationSpotifyTrackIds,
-            },
-          },
-          // Condition 2: Track's second spotify id is in recommendation list
-          {
-            track_spotifySecondTrackId_link: {
-              some: {
-                spotifySecondTrackId: {
+            OR: [
+              // Condition 1: Track's spotify id is in recommendation list
+              {
+                spotifyTrackId: {
                   in: recommendationSpotifyTrackIds,
                 },
               },
-            },
+              // Condition 2: Track's second spotify id is in recommendation list
+              {
+                track_spotifySecondTrackId_link: {
+                  some: {
+                    spotifySecondTrackId: {
+                      in: recommendationSpotifyTrackIds,
+                    },
+                  },
+                },
+              },
+            ],
+          },
+          {
+            OR: [
+              {
+                audioId: {
+                  not: null,
+                },
+              },
+              {
+                previewAudioUrl: {
+                  not: null,
+                },
+              },
+            ],
           },
         ],
       },
@@ -485,5 +594,34 @@ export class TrackService {
     }
 
     return PlainToInstanceList(TrackWithForeign, recommendationTracks);
+  }
+
+  async getMostPopularTracks(limit: number = 20) {
+    const tracks = await this.prisma.track.findMany({
+      where: {
+        OR: [
+          {
+            audioId: {
+              not: null,
+            },
+          },
+          {
+            previewAudioUrl: {
+              not: null,
+            },
+          },
+        ],
+      },
+      orderBy: {
+        temp_popularity: 'desc',
+      },
+      take: limit,
+      include: {
+        mainArtist: true,
+        album: true,
+      },
+    });
+
+    return PlainToInstanceList(TrackWithForeign, tracks);
   }
 }

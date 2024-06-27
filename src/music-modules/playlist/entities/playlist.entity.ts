@@ -1,6 +1,7 @@
 import { PlainToInstance } from 'src/helpers';
 import { Transform } from 'class-transformer';
 import {
+  ApiProp01,
   ApiPropNumber,
   ApiPropStringOptional,
   ApiPropTypeOptional,
@@ -20,6 +21,12 @@ export class Playlist {
 
   @ApiPropUnixOptional() createdAt?: number;
   @ApiPropUnixOptional() updatedAt?: number;
+
+  @ApiPropNumber()
+  @Transform(({ obj }) => obj?._count?.playlist_track_links ?? 0)
+  trackCount: number;
+
+  @ApiProp01() isLikedSongList: 1 | 0 = 0;
 }
 
 export class PlaylistWithForeign extends Playlist {

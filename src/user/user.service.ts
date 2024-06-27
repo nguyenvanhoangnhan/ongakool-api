@@ -155,22 +155,6 @@ export class UserService {
 
     if (!fullUrl) throw new BadRequestException('Failed to upload image');
 
-    const oldAvatar = (
-      await this.prisma.user.findUnique({
-        where: {
-          id: userId,
-        },
-        select: {
-          avatarImageUrl: true,
-        },
-      })
-    ).avatarImageUrl;
-
-    if (oldAvatar && this.s3.matchUrl(oldAvatar)) {
-      const objectKey = this.s3.getObjectKeyFromUrl(oldAvatar);
-      await this.s3.deleteFiles([{ key: objectKey }]);
-    }
-
     await this.prisma.user.update({
       where: {
         id: userId,

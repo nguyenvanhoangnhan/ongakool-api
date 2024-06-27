@@ -163,4 +163,15 @@ export class ArtistService {
 
     return PlainToInstanceList(ArtistWithForeign, similarArtists);
   }
+
+  async getMostPopularArtists(limit: number = 20) {
+    const artists = await this.prisma.artist.findMany({
+      orderBy: {
+        temp_popularity: 'desc',
+      },
+      take: limit,
+    });
+
+    return PlainToInstanceList(Artist, artists);
+  }
 }

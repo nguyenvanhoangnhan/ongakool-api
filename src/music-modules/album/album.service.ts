@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PlainToInstance } from 'src/helpers';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { Album } from './entities/album.entity';
+import { Album, AlbumWithForeign } from './entities/album.entity';
 // import { CreateAlbumDto } from './dto/create-album.dto';
 // import { UpdateAlbumDto } from './dto/update-album.dto';
 
@@ -48,5 +48,19 @@ export class AlbumService {
 
   remove(id: number) {
     return `This action removes a #${id} album`;
+  }
+
+  async getMostPopularAlbums(limit: number = 20) {
+    const albums = await this.prisma.album.findMany({
+      orderBy: {
+        temp_popularity: 'desc',
+      },
+      include: {
+        artist: true,
+      },
+      take: limit,
+    });
+
+    return PlainToInstance(AlbumWithForeign, albums);
   }
 }

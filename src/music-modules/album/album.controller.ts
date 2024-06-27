@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Param, Delete, Query } from '@nestjs/common';
 import { AlbumService } from './album.service';
 
 @Controller('album')
@@ -28,5 +28,10 @@ export class AlbumController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.albumService.remove(+id);
+  }
+
+  @Get('popular')
+  async getPopularAlbums(@Query('limit') limit: number = 20) {
+    return this.albumService.getMostPopularAlbums(+limit);
   }
 }

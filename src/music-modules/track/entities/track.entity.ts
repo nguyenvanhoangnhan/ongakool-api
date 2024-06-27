@@ -27,6 +27,7 @@ export class Track {
   @ApiPropNumber() listenCount: number;
   @ApiPropNumber() albumId: number;
   @ApiPropNumber() audioId: number;
+  @ApiPropNumber() temp_popularity: number;
   @ValidateApiPropOptionalString() previewAudioUrl?: string;
 
   @ApiProp01Optional() isFavourite?: 0 | 1;

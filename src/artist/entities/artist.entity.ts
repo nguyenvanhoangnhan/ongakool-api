@@ -17,6 +17,9 @@ export class Artist {
   @ApiPropString() introduction: string;
   @ApiPropNumber() userId: number;
 
+  @ApiPropNumber() temp_popularity: number;
+
+  @ApiPropStringOptional() avatarImageUrl: string;
   @ApiPropStringOptional() coverImageUrl: string;
   @ApiPropNumber() createdAt: number;
   @ApiPropNumber() updatedAt: number;

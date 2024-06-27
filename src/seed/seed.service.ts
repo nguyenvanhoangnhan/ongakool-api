@@ -345,6 +345,101 @@ export class SeedService {
     }
   }
 
+  async seedArtistPopularity() {
+    const artists = await this.prisma.artist.findMany({
+      select: {
+        id: true,
+      },
+      where: {
+        temp_popularity: {
+          equals: 0,
+        },
+      },
+    });
+
+    for (let index = 0; index < artists.length; index++) {
+      if (index % 200 === 0)
+        console.log('ARTIST countdown: ', artists.length - index - 1);
+
+      const artist = artists[index];
+      const tracks = await this.prisma.track.findMany({
+        where: {
+          OR: [
+            {
+              mainArtistId: artist.id,
+            },
+            {
+              secondary_artist_track_links: {
+                some: {
+                  artistId: artist.id,
+                },
+              },
+            },
+          ],
+        },
+        select: {
+          temp_popularity: true,
+        },
+      });
+
+      const popularity = tracks.reduce(
+        (acc, track) => acc + track.temp_popularity,
+        0,
+      );
+
+      await this.prisma.artist.update({
+        where: {
+          id: artist.id,
+        },
+        data: {
+          temp_popularity: popularity,
+        },
+      });
+    }
+  }
+
+  async seedAlbumPopularity() {
+    const albums = await this.prisma.album.findMany({
+      select: {
+        id: true,
+      },
+      where: {
+        temp_popularity: {
+          equals: 0,
+        },
+      },
+    });
+
+    for (let index = 0; index < albums.length; index++) {
+      if (index % 200 === 0)
+        console.log('ALBUM countdown: ', albums.length - index - 1);
+
+      const album = albums[index];
+      const tracks = await this.prisma.track.findMany({
+        where: {
+          albumId: album.id,
+        },
+        select: {
+          temp_popularity: true,
+        },
+      });
+
+      const popularity = tracks.reduce(
+        (acc, track) => acc + track.temp_popularity,
+        0,
+      );
+
+      await this.prisma.album.update({
+        where: {
+          id: album.id,
+        },
+        data: {
+          temp_popularity: popularity,
+        },
+      });
+    }
+  }
+
   async chore() {
     const allTracks = await this.prisma.track.findMany({
       select: {
@@ -456,53 +551,14 @@ export class SeedService {
   }
 
   async getSomeTracksThatNotHaveAudio() {
-    const Artists = [
-      'Eagles',
-      'Led Zeppelin',
-      'The Beatles',
-      'The Rolling Stones',
-      'Queen',
-      'Taylor Swift',
-      'Ed Sheeran',
-      'One Direction',
-      '5 Seconds of Summer',
-      'Linkin Park',
-      'Westlife',
-      'The Weeknd',
-      'Boney M.',
-      'Bob Marley & The Wailers',
-      'ABBA',
-      'Electric Light Orchestra',
-      'George Harrison',
-      'Tom Petty',
-      'Tom Petty & The Heartbreakers',
-    ];
-
     const tracks = await this.prisma.track.findMany({
       where: {
+        title: {
+          not: '(Unknown Title)',
+        },
         audioId: {
           equals: null,
         },
-        OR: [
-          {
-            mainArtist: {
-              name: {
-                in: Artists,
-              },
-            },
-          },
-          {
-            secondary_artist_track_links: {
-              some: {
-                artist: {
-                  name: {
-                    in: Artists,
-                  },
-                },
-              },
-            },
-          },
-        ],
       },
       include: {
         mainArtist: true,
@@ -513,6 +569,10 @@ export class SeedService {
           },
         },
       },
+      orderBy: {
+        temp_popularity: 'desc',
+      },
+      take: 2000,
     });
 
     const trackIds = tracks.map((track) => track.spotifyTrackId);
@@ -653,6 +713,95 @@ export class SeedService {
         },
         data: {
           title: trackData.name,
+        },
+      });
+    }
+  }
+
+  async updateEmptyPreviewUrl() {
+    for (let i = 0; i <= 100; i++) {
+      console.log(i);
+
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const tracks = await this.prisma.track.findMany({
+        where: {
+          OR: [
+            {
+              previewAudioUrl: '',
+            },
+            {
+              previewAudioUrl: null,
+            },
+          ],
+          audioId: null,
+          temp_mark: 0,
+        },
+        include: {
+          track_spotifySecondTrackId_link: true,
+        },
+        take: 50,
+        orderBy: {
+          temp_popularity: 'desc',
+        },
+      });
+
+      const trackSpotifyIds = tracks.map((track) => track.spotifyTrackId);
+      const trackIds = tracks.map((track) => track.id);
+
+      const joinedTrackSpotifyIds = trackSpotifyIds.join(',');
+
+      /**********/
+      const ENDPOINT = `https://api.spotify.com/v1/tracks`;
+      const accessToken = `BQDbFnEh3O9XH-QqhgugS-QcSKHKYYR8bMFQvCFe6ag6c90gRVHvGssF46i-dmyVKshhaoQDlRE7PfhDlxmZuSKNM-fbWkHlxFK2WbAduCsB5SFXsMg`;
+
+      const trackData = await axios
+        .get<{
+          tracks: Array<{
+            preview_url: string | null;
+            id: string;
+          }>;
+        }>(ENDPOINT + `?ids=${joinedTrackSpotifyIds}`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        })
+        .then((res) => res.data);
+
+      /**********/
+
+      for (const track of trackData?.tracks ?? []) {
+        const matchDbTrack = tracks.find(
+          (t) =>
+            t.spotifyTrackId === track.id ||
+            t.track_spotifySecondTrackId_link?.[0]?.spotifySecondTrackId ===
+              track.id,
+        );
+
+        if (!matchDbTrack) {
+          continue;
+        }
+
+        await this.prisma.track.update({
+          where: {
+            id: matchDbTrack.id,
+          },
+          data: {
+            previewAudioUrl: track.preview_url,
+            temp_mark: 1,
+          },
+        });
+      }
+
+      /**********/
+
+      await this.prisma.track.updateMany({
+        where: {
+          id: {
+            in: trackIds,
+          },
+        },
+        data: {
+          temp_mark: 1,
         },
       });
     }

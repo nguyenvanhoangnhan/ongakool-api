@@ -10,8 +10,10 @@ import { PlainToInstance, PlainToInstanceList } from 'src/helpers';
 import { Playlist, PlaylistWithForeign } from './entities/playlist.entity';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AuthData } from 'src/auth/decorator/get-auth-data.decorator';
-import { AddTrackToPlaylistDto } from './dto/addTrackToPlaylist.dto';
-import { Track } from 'src/music-modules/track/entities/track.entity';
+import {
+  Track,
+  TrackWithForeign,
+} from 'src/music-modules/track/entities/track.entity';
 import { GetUnixNow } from 'src/util/common.util';
 import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
@@ -35,7 +37,8 @@ export class PlaylistService {
 
     const newPlaylist = await this.prisma.playlist.create({
       data: {
-        coverImageUrl: 'https://via.placeholder.com/500?text=Playlist',
+        coverImageUrl:
+          'https://ongakool.s3.ap-southeast-1.amazonaws.com/assets/default-playlist-cover.jpeg',
         name: `Playlist ${createdCount + 1}`,
         ownerUser: {
           connect: {
@@ -70,7 +73,11 @@ export class PlaylistService {
         id,
       },
       data: {
-        name: dto.name ?? undefined,
+        name: !dto.name || dto.name.trim() === '' ? undefined : dto.name,
+        description:
+          !dto.description || dto.description.trim() === ''
+            ? undefined
+            : dto.description,
       },
     });
   }
@@ -111,12 +118,6 @@ export class PlaylistService {
       },
     });
 
-    //delete current cover image
-    if (playlist.coverImageUrl && this.s3.matchUrl(playlist.coverImageUrl)) {
-      const objectKey = this.s3.getObjectKeyFromUrl(playlist.coverImageUrl);
-      await this.s3.deleteFiles([{ key: objectKey }]);
-    }
-
     return fullUrl;
   }
 
@@ -128,16 +129,56 @@ export class PlaylistService {
     return PlainToInstance(Playlist, playlist);
   }
 
-  async findOneWithForeign(id: number) {
+  async getById(id: number, authData: AuthData) {
+    if (id === -1) {
+      return this.getLikedSongsAsPlaylist(authData);
+    }
+
     const playlist = await this.prisma.playlist.findFirstOrThrow({
       where: { id },
       include: {
         ownerUser: true,
         playlist_track_links: {
-          include: { track: true },
+          include: { track: { include: { album: true } } },
         },
       },
     });
+
+    return PlainToInstance(PlaylistWithForeign, playlist);
+  }
+
+  async getLikedSongsAsPlaylist(authData: AuthData) {
+    const likedSongs = await this.prisma.user_favourite_track.findMany({
+      where: {
+        userId: authData.id,
+      },
+      include: {
+        track: {
+          include: {
+            album: true,
+          },
+        },
+      },
+    });
+
+    const playlist = {
+      id: -1,
+      name: 'Liked Songs',
+      coverImageUrl:
+        'https://ongakool.s3.ap-southeast-1.amazonaws.com/assets/liked-songs.jpg',
+      ownerUserId: authData.id,
+      _count: {
+        playlist_track_links: likedSongs.length,
+      },
+      createdAt: 0,
+      updatedAt: 0,
+      description: 'Liked Songs',
+      isLikedSongList: 1,
+      playlist_track_links: likedSongs.map((i, index) => ({
+        id: index,
+        track: i.track,
+      })),
+    };
 
     return PlainToInstance(PlaylistWithForeign, playlist);
   }
@@ -147,13 +188,52 @@ export class PlaylistService {
       where: {
         ownerUserId: authData.id,
       },
+      include: {
+        _count: {
+          select: {
+            playlist_track_links: true,
+          },
+        },
+      },
     });
 
-    return PlainToInstanceList(Playlist, playlists);
+    const likedSongs = await this.prisma.user_favourite_track.findMany({
+      where: {
+        userId: authData.id,
+      },
+    });
+
+    const playlistForLikedSongs: typeof playlists extends Array<infer T>
+      ? T & { isLikedSongList: number }
+      : never = {
+      id: -1,
+      name: 'Liked Songs',
+      ownerUserId: authData.id,
+      coverImageUrl:
+        'https://ongakool.s3.ap-southeast-1.amazonaws.com/assets/liked-songs.jpg',
+      _count: {
+        playlist_track_links: likedSongs.length,
+      },
+      createdAt: 0,
+      updatedAt: 0,
+      description: 'Liked Songs',
+      isLikedSongList: 1,
+    };
+
+    return PlainToInstanceList(Playlist, [
+      playlistForLikedSongs,
+      ...playlists.map((playlist) => ({
+        ...playlist,
+        isLikedSongList: 0,
+      })),
+    ]);
   }
 
-  async addTrackToPlaylist(dto: AddTrackToPlaylistDto, authData: AuthData) {
-    const { playlistId, trackId } = dto;
+  async addTrackToPlaylist(
+    playlistId: number,
+    trackId: number,
+    authData: AuthData,
+  ) {
     await this.prisma.track.findFirstOrThrow({
       where: { id: +trackId },
     });
@@ -163,12 +243,8 @@ export class PlaylistService {
       include: {
         playlist_track_links: {
           select: {
+            no: true,
             trackId: true,
-          },
-        },
-        _count: {
-          select: {
-            playlist_track_links: true,
           },
         },
       },
@@ -185,6 +261,11 @@ export class PlaylistService {
       throw new BadRequestException('This track is already in this playlist');
     }
 
+    const highestNo = playlist.playlist_track_links.reduce(
+      (acc, cur) => (cur.no > acc ? cur.no : acc),
+      0,
+    );
+
     await this.prisma.playlist.update({
       where: { id: +playlistId },
       data: {
@@ -192,7 +273,7 @@ export class PlaylistService {
           create: {
             trackId: +trackId,
             createdAt: GetUnixNow(),
-            no: playlist._count.playlist_track_links + 1,
+            no: highestNo,
           },
         },
       },
@@ -219,19 +300,16 @@ export class PlaylistService {
       throw new UnauthorizedException('You are not the owner of this playlist');
     }
     if (
-      playlist.playlist_track_links.findIndex((i) => i.id === trackId) === -1
+      playlist.playlist_track_links.findIndex((i) => i.trackId === trackId) ===
+      -1
     ) {
       throw new BadRequestException('This track is not in this playlist');
     }
 
-    await this.prisma.playlist.update({
-      where: { id: playlistId },
-      data: {
-        playlist_track_links: {
-          disconnect: {
-            id: trackId,
-          },
-        },
+    await this.prisma.playlist_track_link.deleteMany({
+      where: {
+        playlistId: playlistId,
+        trackId: trackId,
       },
     });
   }
@@ -334,6 +412,7 @@ export class PlaylistService {
       },
       include: {
         track_spotifySecondTrackId_link: true,
+        album: true,
       },
     });
     console.log('Recommendation Tracks:');
@@ -345,6 +424,6 @@ export class PlaylistService {
       })),
     );
 
-    return PlainToInstanceList(Track, recommendationTracks);
+    return PlainToInstanceList(TrackWithForeign, recommendationTracks);
   }
 }

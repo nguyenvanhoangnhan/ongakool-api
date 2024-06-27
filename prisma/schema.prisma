@@ -68,6 +68,8 @@ model track {
 
   temp_popularity Int? @default(0)
 
+  temp_mark Int? @default(0)
+
   mainArtist                      artist                            @relation(fields: [mainArtistId], references: [id])
   album                           album?                            @relation(fields: [albumId], references: [id])
   audio                           audio?                            @relation(fields: [audioId], references: [id])
@@ -96,6 +98,8 @@ model album {
   createdAt  Int?
   updatedAt  Int?
 
+  temp_popularity Int? @default(0)
+
   tracks             track[]
   artist             artist?             @relation(fields: [artistId], references: [id])
   user_listen_albums user_listen_album[]
@@ -116,6 +120,8 @@ model artist {
 
   createdAt Int?
   updatedAt Int?
+
+  temp_popularity Int? @default(0)
 
   user                        user?                         @relation(fields: [userId], references: [id])
   albums                      album[]
@@ -210,6 +216,8 @@ model user_listen_artist {
 
   user   user   @relation(fields: [userId], references: [id])
   artist artist @relation(fields: [artistId], references: [id])
+
+  @@unique([userId, artistId], name: "user_listen_artist_userId_artistId_unique")
 }
 
 model user_favourite_track {
@@ -236,6 +244,8 @@ model user_listen_album {
 
   user  user  @relation(fields: [userId], references: [id])
   album album @relation(fields: [albumId], references: [id])
+
+  @@unique([userId, albumId], name: "user_listen_album_userId_albumId_unique")
 }
 
 model track_spotifySecondTrackId_link {

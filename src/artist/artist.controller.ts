@@ -85,4 +85,9 @@ export class ArtistController {
   async getSimilarArtists(@Param('id') id: string) {
     return this.artistService.external_getSimilarArtists(+id);
   }
+
+  @Get('popular')
+  async getPopularArtists(@Query('limit') limit: number = 20) {
+    return this.artistService.getMostPopularArtists(+limit);
+  }
 }

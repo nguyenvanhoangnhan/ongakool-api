@@ -106,7 +106,12 @@ export class TrackController {
     };
   }
 
-  @Get('recently-listening-based-recommendation')
+  @Get('popular')
+  async getPopularTracks(@Query('limit') limit: number = 20) {
+    return this.trackService.getMostPopularTracks(+limit);
+  }
+
+  @Get('recommendation/recently-listening-based')
   @ApiBearerUserGuard()
   async getRecentlyListeningBasedRecommendation(
     @GetAuthData() authData: AuthData,

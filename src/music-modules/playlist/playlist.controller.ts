@@ -18,7 +18,6 @@ import {
   AuthData,
   GetAuthData,
 } from 'src/auth/decorator/get-auth-data.decorator';
-import { AddTrackToPlaylistDto } from './dto/addTrackToPlaylist.dto';
 import {
   ApiBearerAuth,
   ApiConsumes,
@@ -55,8 +54,9 @@ export class PlaylistController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.playlistService.findOneWithForeign(+id);
+  @ApiBearerUserGuard()
+  findOne(@Param('id') id: string, @GetAuthData() authData: AuthData) {
+    return this.playlistService.getById(+id, authData);
   }
 
   @Get('mine')
@@ -65,13 +65,34 @@ export class PlaylistController {
     return this.playlistService.getMyPlaylists(authData);
   }
 
-  @Post('/add-track')
+  @Post('/add-track/:playlistId/:trackId')
   @ApiBearerUserGuard()
   async addTrackToPlaylist(
-    @Body() body: AddTrackToPlaylistDto,
+    @Param('playlistId') playlistId: string,
+    @Param('trackId') trackId: string,
     @GetAuthData() authData: AuthData,
   ) {
-    await this.playlistService.addTrackToPlaylist(body, authData);
+    await this.playlistService.addTrackToPlaylist(
+      +playlistId,
+      +trackId,
+      authData,
+    );
+
+    return SuccessMessageResp();
+  }
+
+  @Post('/remove-track/:playlistId/:trackId')
+  @ApiBearerUserGuard()
+  async removeTrackFromPlaylist(
+    @Param('playlistId') playlistId: string,
+    @Param('trackId') trackId: string,
+    @GetAuthData() authData: AuthData,
+  ) {
+    await this.playlistService.removeTrackFromPlaylist(
+      +playlistId,
+      +trackId,
+      authData,
+    );
 
     return SuccessMessageResp();
   }
@@ -97,7 +118,7 @@ export class PlaylistController {
 
   @ApiBearerUserGuard()
   @Put(':id')
-  async updatePlaylistCover(
+  async updatePlaylist(
     @Param('id') id: string,
     @Body() updatePlaylistDto: UpdatePlaylistDto,
     @GetAuthData() authData: AuthData,

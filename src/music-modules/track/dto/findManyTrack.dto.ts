@@ -4,8 +4,9 @@ import {
   ValidateApiPropOptionalNumber,
   ValidateApiPropOptionalString,
 } from 'src/decorator/validate.decorators';
+import { PaginationQueryDto } from 'src/util/common.dto';
 
-export class FindManyTrackQueryDto {
+export class FindManyTrackQueryDto extends PaginationQueryDto {
   @ValidateApiPropOptionalListOfNumber() ids: number[];
   @ValidateApiPropOptionalListOfString() spotifyIds: string[];
   @ValidateApiPropOptionalNumber() artistId: number;

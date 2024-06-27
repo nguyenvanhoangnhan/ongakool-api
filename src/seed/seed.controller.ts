@@ -58,6 +58,26 @@ export class SeedController {
     };
   }
 
+  @Get('seed-artist-popularity')
+  async seedArtistPopularity() {
+    // throw new ForbiddenException('Forbidden');
+    await this.seedService.seedArtistPopularity();
+
+    return {
+      message: 'success',
+    };
+  }
+
+  @Get('seed-album-popularity')
+  async seedAlbumPopularity() {
+    // throw new ForbiddenException('Forbidden');
+    await this.seedService.seedAlbumPopularity();
+
+    return {
+      message: 'success',
+    };
+  }
+
   @Post('seed-audio')
   async seedAudio() {
     // throw new ForbiddenException('Forbidden');
@@ -96,6 +116,17 @@ export class SeedController {
     throw new ForbiddenException('Forbidden');
 
     await this.seedService.updateEmptyTitle();
+
+    return {
+      message: 'success',
+    };
+  }
+
+  @Post('update-empty-preview-url')
+  async updateEmptyPreviewUrl() {
+    // throw new ForbiddenException('Forbidden');
+
+    await this.seedService.updateEmptyPreviewUrl();
 
     return {
       message: 'success',

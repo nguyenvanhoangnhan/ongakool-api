@@ -19,6 +19,8 @@ export class Album {
   @ApiPropNumber() artistId: number;
   @ApiPropStringOptional() coverImageUrl: string;
 
+  @ApiPropNumber() temp_popularity: number;
+
   @ApiPropEnumOptional(AlbumGroup) albumGroup?: AlbumGroup;
   @ApiPropEnumOptional(AlbumGroup) albumType?: AlbumType;
 
@@ -27,7 +29,7 @@ export class Album {
   @ApiPropNumber() updatedAt: number;
 }
 
-export class AlbumWithForeign {
+export class AlbumWithForeign extends Album {
   @Transform(({ obj }) => PlainToInstance(Track, obj.tracks))
   @ApiPropTypeOptional(Track)
   tracks?: Track[];
