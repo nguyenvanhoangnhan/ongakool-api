@@ -14,7 +14,10 @@ export class SeedService {
   constructor(
     private readonly prisma: PrismaService,
     private s3: S3Service,
-  ) {}
+  ) {
+    // this.getTestTrackAudios();
+    // this.seedAudio();
+  }
 
   async seedArtist() {
     const dataPath =
@@ -482,6 +485,28 @@ export class SeedService {
     for (const file of files) {
       const spotifyTrackId = file.replace('.mp3', '');
 
+      const _track = await this.prisma.track.findFirst({
+        where: {
+          OR: [
+            {
+              spotifyTrackId,
+            },
+            {
+              track_spotifySecondTrackId_link: {
+                some: {
+                  spotifySecondTrackId: spotifyTrackId,
+                },
+              },
+            },
+          ],
+        },
+      });
+      if (_track && _track?.audioId) {
+        console.log('SKIP index: ', index);
+        index++;
+        continue;
+      }
+
       const buffer = fs.readFileSync(`${folderPath}/${file}`);
 
       let duration: number = null;
@@ -804,6 +829,58 @@ export class SeedService {
           temp_mark: 1,
         },
       });
+    }
+  }
+
+  async getTestTrackAudios() {
+    // exported_data/test_tracks.json
+    // example:
+    /**
+[
+  {
+    "id": 65,
+    "spotifyTrackId": "5CQ30WqJwcep0pYcV4AMNc",
+    "title": "Stairway to Heaven - Remaster",
+    "audio": {
+      "fullUrl": "https://ongakool.s3.ap-southeast-1.amazonaws.com/mp3/5CQ30WqJwcep0pYcV4AMNc.mp3"
+    }
+  },
+  {
+    "id": 76,
+    "spotifyTrackId": "4u7EnebtmKWzUH433cf5Qv",
+    "title": "Bohemian Rhapsody - Remastered 2011",
+    "audio": {
+      "fullUrl": "https://ongakool.s3.ap-southeast-1.amazonaws.com/mp3/1AhDOtG9vPSOmsWgNW0BEY.mp3"
+    }
+  },
+  {
+    "id": 79,
+    "spotifyTrackId": "6Vjk8MNXpQpi0F4BefdTyq",
+    "title": "Kashmir - Remaster",
+    "audio": {
+      "fullUrl": "https://ongakool.s3.ap-southeast-1.amazonaws.com/mp3/2nVHqZbOGkKWzlcy1aMbE7.mp3"
+    }
+  },
+     */
+
+    // download audio from fullUrl and save in /exporeted_data/test
+
+    const path =
+      '/Users/hoangnhan1203/Code/DATN/final/ongakool-be/exported_data/test_tracks.json';
+
+    const tracks = JSON.parse(fs.readFileSync(path, 'utf8'));
+
+    for (const track of tracks) {
+      if (!track?.audio?.fullUrl) continue;
+
+      const buffer = await axios.get(track.audio.fullUrl, {
+        responseType: 'arraybuffer',
+      });
+
+      fs.writeFileSync(
+        `/Users/hoangnhan1203/Code/DATN/final/ongakool-be/exported_data/test/${track.spotifyTrackId}.mp3`,
+        Buffer.from(buffer.data),
+      );
     }
   }
 }

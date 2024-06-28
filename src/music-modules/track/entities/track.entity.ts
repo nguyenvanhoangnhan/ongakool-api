@@ -1,4 +1,7 @@
-import { Album } from 'src/music-modules/album/entities/album.entity';
+import {
+  Album,
+  AlbumWithForeign,
+} from 'src/music-modules/album/entities/album.entity';
 import { Audio } from 'src/music-modules/audio/entities/audio.entity';
 import {
   ApiProp01Optional,
@@ -12,7 +15,7 @@ import {
   Pivot_UserFavouriteTrack,
   Pivot_UserListenTrack,
 } from 'src/pivot/pivots.entity';
-import { Artist } from 'src/artist/entities/artist.entity';
+import { Artist, ArtistWithForeign } from 'src/artist/entities/artist.entity';
 import { Transform } from 'class-transformer';
 import { PlainToInstance } from 'src/helpers';
 import { ValidateApiPropOptionalString } from 'src/decorator/validate.decorators';
@@ -34,13 +37,13 @@ export class Track {
 }
 
 export class TrackWithForeign extends Track {
-  @ApiPropTypeOptional(Artist)
-  @Transform(({ obj }) => PlainToInstance(Artist, obj?.mainArtist))
-  mainArtist?: Artist;
+  @ApiPropTypeOptional(ArtistWithForeign)
+  @Transform(({ obj }) => PlainToInstance(ArtistWithForeign, obj?.mainArtist))
+  mainArtist?: ArtistWithForeign;
 
-  @ApiPropTypeOptional(Album)
-  @Transform(({ obj }) => PlainToInstance(Album, obj?.album))
-  album?: Album;
+  @ApiPropTypeOptional(AlbumWithForeign)
+  @Transform(({ obj }) => PlainToInstance(AlbumWithForeign, obj?.album))
+  album?: AlbumWithForeign;
 
   @ApiPropTypeOptional(Audio)
   @Transform(({ obj }) => PlainToInstance(Audio, obj?.audio))

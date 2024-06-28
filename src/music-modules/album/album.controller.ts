@@ -16,8 +16,8 @@ export class AlbumController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.albumService.findOne(+id);
+  getById(@Param('id') id: string) {
+    return this.albumService.getById(+id);
   }
 
   // @Patch(':id')
@@ -33,5 +33,10 @@ export class AlbumController {
   @Get('popular')
   async getPopularAlbums(@Query('limit') limit: number = 20) {
     return this.albumService.getMostPopularAlbums(+limit);
+  }
+
+  @Get('search/:searchText')
+  searchArtistName(@Param('searchText') searchText: string) {
+    return this.albumService.searchAlbum({ searchText });
   }
 }

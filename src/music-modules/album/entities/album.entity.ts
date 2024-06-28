@@ -1,6 +1,6 @@
 import { AlbumGroup, AlbumType } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { Artist } from 'src/artist/entities/artist.entity';
+import { ArtistWithForeign } from 'src/artist/entities/artist.entity';
 import {
   ApiPropEnumOptional,
   ApiPropNumber,
@@ -8,7 +8,7 @@ import {
   ApiPropTypeOptional,
 } from 'src/decorator/entity.decorator';
 import { PlainToInstance, PlainToInstanceList } from 'src/helpers';
-import { Track } from 'src/music-modules/track/entities/track.entity';
+import { TrackWithForeign } from 'src/music-modules/track/entities/track.entity';
 import { Pivot_UserListenAlbum } from 'src/pivot/pivots.entity';
 
 export class Album {
@@ -30,15 +30,17 @@ export class Album {
 }
 
 export class AlbumWithForeign extends Album {
-  @Transform(({ obj }) => PlainToInstance(Track, obj.tracks))
-  @ApiPropTypeOptional(Track)
-  tracks?: Track[];
+  @Transform(({ obj }) => PlainToInstance(TrackWithForeign, obj?.tracks))
+  @ApiPropTypeOptional(TrackWithForeign)
+  tracks?: TrackWithForeign[];
 
-  @Transform(({ obj }) => PlainToInstance(Artist, obj.artist))
-  @ApiPropTypeOptional(Artist)
-  artist?: Artist;
+  @Transform(({ obj }) => PlainToInstance(ArtistWithForeign, obj.artist))
+  @ApiPropTypeOptional(ArtistWithForeign)
+  artist?: ArtistWithForeign;
 
-  @Transform(({ obj }) => PlainToInstanceList(Artist, obj.user_listen_albums))
+  @Transform(({ obj }) =>
+    PlainToInstanceList(Pivot_UserListenAlbum, obj.user_listen_albums),
+  )
   @ApiPropTypeOptional(Pivot_UserListenAlbum)
   user_listen_albums?: Pivot_UserListenAlbum[];
 }

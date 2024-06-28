@@ -46,17 +46,40 @@ export class ArtistService {
       where: {
         name: { contains: filter.searchText.trim() },
       },
+      orderBy: {
+        temp_popularity: 'desc',
+      },
+      take: 20,
     });
 
     return PlainToInstanceList(Artist, artists);
   }
 
-  async findOne(id: number) {
+  async getById(id: number) {
     const artist = await this.prisma.artist.findFirstOrThrow({
       where: { id },
+      include: {
+        albums: {
+          orderBy: {
+            temp_popularity: 'desc',
+          },
+        },
+        tracks: {
+          orderBy: {
+            temp_popularity: 'desc',
+          },
+          include: {
+            audio: true,
+            album: true,
+            mainArtist: true,
+          },
+        },
+      },
     });
 
-    return PlainToInstance(Artist, artist);
+    console.log(artist.albums);
+
+    return PlainToInstance(ArtistWithForeign, artist);
   }
 
   async findOne_WithAlbums(id: number) {

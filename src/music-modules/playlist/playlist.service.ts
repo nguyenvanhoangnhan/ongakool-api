@@ -139,7 +139,9 @@ export class PlaylistService {
       include: {
         ownerUser: true,
         playlist_track_links: {
-          include: { track: { include: { album: true } } },
+          include: {
+            track: { include: { album: true, audio: true, mainArtist: true } },
+          },
         },
       },
     });

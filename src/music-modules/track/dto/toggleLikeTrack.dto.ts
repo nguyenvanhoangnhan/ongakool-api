@@ -1,6 +1,9 @@
-import { ValidateApiPropRequired01 } from 'src/decorator/validate.decorators';
+import {
+  ValidateApiPropRequired01,
+  ValidateApiPropRequiredNumber,
+} from 'src/decorator/validate.decorators';
 export class ToggleLikeTrackDto {
-  @ValidateApiPropRequired01()
+  @ValidateApiPropRequiredNumber()
   trackId: number;
   @ValidateApiPropRequired01()
   toggleOn: 1 | 0;

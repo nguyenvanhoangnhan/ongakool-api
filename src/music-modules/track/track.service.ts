@@ -20,36 +20,36 @@ export class TrackService {
     private prisma: PrismaService,
     private config: ConfigService,
   ) {
-    this.prisma.track
-      .findMany({
-        where: {
-          id: {
-            in: [
-              456, 461, 473, 4658, 6751, 6752, 6866, 10553, 10870, 22137, 46883,
-              47732, 76, 1636, 3296, 2134, 4443, 7609, 11473, 23681, 59457, 65,
-              79, 8188, 31437, 31439, 33901, 4655, 10664, 28940, 15530, 1065,
-              328, 2368, 2122, 4065, 8860, 1734, 3930, 15487, 16932, 8964, 2132,
-              4408, 347, 4601, 4600, 4602, 37009,
-            ],
-          },
-        },
-        select: {
-          id: true,
-          spotifyTrackId: true,
-          title: true,
-          audio: {
-            select: {
-              fullUrl: true,
-            },
-          },
-        },
-      })
-      .then((data) => {
-        writeFileSync(
-          'exported_data/test_tracks.json',
-          JSON.stringify(data, null, 2),
-        );
-      });
+    // this.prisma.track
+    //   .findMany({
+    //     where: {
+    //       id: {
+    //         in: [
+    //           456, 461, 473, 4658, 6751, 6752, 6866, 10553, 10870, 22137, 46883,
+    //           47732, 76, 1636, 3296, 2134, 4443, 7609, 11473, 23681, 59457, 65,
+    //           79, 8188, 31437, 31439, 33901, 4655, 10664, 28940, 15530, 1065,
+    //           328, 2368, 2122, 4065, 8860, 1734, 3930, 15487, 16932, 8964, 2132,
+    //           4408, 347, 4601, 4600, 4602, 37009,
+    //         ],
+    //       },
+    //     },
+    //     select: {
+    //       id: true,
+    //       spotifyTrackId: true,
+    //       title: true,
+    //       audio: {
+    //         select: {
+    //           fullUrl: true,
+    //         },
+    //       },
+    //     },
+    //   })
+    //   .then((data) => {
+    //     writeFileSync(
+    //       'exported_data/test_tracks.json',
+    //       JSON.stringify(data, null, 2),
+    //     );
+    //   });
   }
 
   // create(createTrackDto: CreateTrackDto) {
@@ -206,7 +206,7 @@ export class TrackService {
           },
         },
       },
-      take: 20,
+      take: 30,
     });
 
     return PlainToInstanceList(
@@ -330,14 +330,14 @@ export class TrackService {
       orderBy: {
         temp_popularity: 'desc',
       },
-      take: query.limit ?? 20,
+      take: query.limit ? +query.limit : 20,
       include: {
         mainArtist: true,
         album: true,
       },
     });
 
-    return PlainToInstanceList(Track, tracks);
+    return PlainToInstanceList(TrackWithForeign, tracks);
   }
 
   async external_searchTrackByLyrics(query: SearchTrack) {
@@ -368,15 +368,21 @@ export class TrackService {
       },
       include: {
         mainArtist: true,
+        album: true,
       },
-      // orderBy: {
-      //   temp_popularity: 'desc',
-      // },
+      orderBy: {
+        temp_popularity: 'desc',
+      },
     });
 
     // sort result by resultPopularityTrackIds
-    const resultSortedByExternalResult = resultSpotifyTrackIds.map((id) =>
-      tracks.find((i) => i.spotifyTrackId === id),
+    // const resultSortedByExternalResult = resultSpotifyTrackIds.map((id) =>
+    //   tracks.find((i) => i.spotifyTrackId === id),
+    // );
+
+    // sort by popularity
+    const resultSortedByPopularity = tracks.sort(
+      (a, b) => b.temp_popularity - a.temp_popularity,
     );
 
     console.log(`:::QUERY::: limit ${query.limit}  text: "${query.text}"`);
@@ -389,7 +395,7 @@ export class TrackService {
       })),
     );
 
-    return PlainToInstanceList(Track, resultSortedByExternalResult);
+    return PlainToInstanceList(TrackWithForeign, resultSortedByPopularity);
   }
 
   async chore_countLeastPopularTracks(lessThanOrEqual: number = 10) {

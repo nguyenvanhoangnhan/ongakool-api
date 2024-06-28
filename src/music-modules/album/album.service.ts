@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { PlainToInstance } from 'src/helpers';
+import { PlainToInstance, PlainToInstanceList } from 'src/helpers';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Album, AlbumWithForeign } from './entities/album.entity';
+import { SearchArtistNameQueryDto } from 'src/artist/dto/searchArtistName.dto';
 // import { CreateAlbumDto } from './dto/create-album.dto';
 // import { UpdateAlbumDto } from './dto/update-album.dto';
 
@@ -16,12 +17,22 @@ export class AlbumService {
     return `This action returns all album`;
   }
 
-  findOne(id: number) {
+  getById(id: number) {
     const album = this.prisma.album.findFirstOrThrow({
       where: { id },
+      include: {
+        artist: true,
+        tracks: {
+          include: {
+            mainArtist: true,
+            album: true,
+            audio: true,
+          },
+        },
+      },
     });
 
-    return PlainToInstance(Album, album);
+    return PlainToInstance(AlbumWithForeign, album);
   }
 
   findOneWithTrack(id: number) {
@@ -62,5 +73,23 @@ export class AlbumService {
     });
 
     return PlainToInstance(AlbumWithForeign, albums);
+  }
+
+  async searchAlbum(filter: SearchArtistNameQueryDto) {
+    const artists = await this.prisma.album.findMany({
+      where: {
+        title: { contains: filter.searchText.trim() },
+      },
+      include: {
+        tracks: true,
+        artist: true,
+      },
+      orderBy: {
+        temp_popularity: 'desc',
+      },
+      take: 20,
+    });
+
+    return PlainToInstanceList(AlbumWithForeign, artists);
   }
 }

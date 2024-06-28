@@ -4,7 +4,10 @@ import {
   ApiPropNumber,
   ApiPropTypeOptional,
 } from 'src/decorator/entity.decorator';
-import { Track } from 'src/music-modules/track/entities/track.entity';
+import {
+  Track,
+  TrackWithForeign,
+} from 'src/music-modules/track/entities/track.entity';
 import { Playlist } from 'src/music-modules/playlist/entities/playlist.entity';
 import { Transform } from 'class-transformer';
 import { Album } from 'src/music-modules/album/entities/album.entity';
@@ -35,7 +38,7 @@ export class Pivot_PlaylistTrackLink {
   @ApiPropNumber() trackId: number;
 
   @ApiPropTypeOptional(Track)
-  @Transform(({ obj }) => PlainToInstance(Track, obj?.track))
+  @Transform(({ obj }) => PlainToInstance(TrackWithForeign, obj?.track))
   track?: Track;
 
   @ApiPropTypeOptional(Playlist)

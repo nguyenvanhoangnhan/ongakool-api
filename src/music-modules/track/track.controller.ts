@@ -76,7 +76,7 @@ export class TrackController {
     return await this.trackService.listenTrack(+id, authData);
   }
 
-  @Post(':id/toggle-like')
+  @Post('toggle-like')
   @ApiBearerUserGuard()
   async toggleLikeTrack(
     @Body() body: ToggleLikeTrackDto,
